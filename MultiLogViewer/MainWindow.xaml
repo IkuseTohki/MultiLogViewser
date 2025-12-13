@@ -6,14 +6,33 @@
         xmlns:local="clr-namespace:MultiLogViewer"
         mc:Ignorable="d"
         Title="Multi Log Viewer" Height="450" Width="800">
-    <Grid>
-        <Menu VerticalAlignment="Top">
-            <MenuItem Header="ファイル">
-                <MenuItem Header="終了" Click="ExitMenuItem_Click"/>
+    <DockPanel>
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="ファイル(_F)">
+                <MenuItem Header="開く(_O)" Command="{Binding OpenFileCommand}" />
+                <Separator />
+                <MenuItem Header="終了(_X)" Click="ExitMenuItem_Click" />
             </MenuItem>
-            <MenuItem Header="設定">
+            <MenuItem Header="設定(_S)">
                 <MenuItem Header="設定画面を開く" Click="OpenSettingsMenuItem_Click"/>
             </MenuItem>
         </Menu>
-    </Grid>
+
+        <ListView ItemsSource="{Binding LogEntries}">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Width="150">
+                        <GridViewColumnHeader Click="TimestampHeader_Click">Timestamp</GridViewColumnHeader>
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Timestamp}" />
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="Level" DisplayMemberBinding="{Binding Level}" Width="80"/>
+                    <GridViewColumn Header="Message" DisplayMemberBinding="{Binding Message}" Width="500"/>
+                </GridView>
+            </ListView.View>
+        </ListView>
+    </DockPanel>
 </Window>

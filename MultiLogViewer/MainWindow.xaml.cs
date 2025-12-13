@@ -1,3 +1,4 @@
+using MultiLogViewer.ViewModels;
 using System.Windows;
 
 namespace MultiLogViewer
@@ -32,6 +33,19 @@ namespace MultiLogViewer
             // 設定画面を開くロジックをここに記述
             SettingsWindow settingsWindow = new SettingsWindow();
             settingsWindow.ShowDialog();
+        }
+
+        /// <summary>
+        /// テスト観点: Timestamp列のヘッダーがクリックされた際、ログエントリが時刻でソートされることを確認する。
+        /// </summary>
+        /// <param name="sender">イベントのソース。</param>
+        /// <param name="e">イベントデータ。</param>
+        private void TimestampHeader_Click(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is MainViewModel viewModel)
+            {
+                viewModel.SortByTimestampCommand.Execute(null);
+            }
         }
     }
 }
