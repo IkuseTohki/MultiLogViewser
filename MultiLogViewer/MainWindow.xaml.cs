@@ -1,10 +1,14 @@
+using MultiLogViewer.Models; // LogEntry を使用するため追加
 using MultiLogViewer.ViewModels;
+using System.Linq; // FirstOrDefault を使用するため追加
 using System.Windows;
+using System.Windows.Controls; // DataGridAutoGeneratingColumnEventArgs を使用するため追加
+using System.Windows.Data; // Binding を使用するため追加
 
 namespace MultiLogViewer
 {
     /// <summary>
-    /// MainWindow.xaml の相互作用ロジック
+    /// Interaction logic for MainWindow.xaml
     /// </summary>
     public partial class MainWindow : Window
     {
@@ -34,18 +38,7 @@ namespace MultiLogViewer
             SettingsWindow settingsWindow = new SettingsWindow();
             settingsWindow.ShowDialog();
         }
-
-        /// <summary>
-        /// テスト観点: Timestamp列のヘッダーがクリックされた際、ログエントリが時刻でソートされることを確認する。
-        /// </summary>
-        /// <param name="sender">イベントのソース。</param>
-        /// <param name="e">イベントデータ。</param>
-        private void TimestampHeader_Click(object sender, RoutedEventArgs e)
-        {
-            if (DataContext is MainViewModel viewModel)
-            {
-                viewModel.SortByTimestampCommand.Execute(null);
-            }
-        }
     }
 }
+
+

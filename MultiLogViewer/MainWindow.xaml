@@ -5,7 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:MultiLogViewer"
         mc:Ignorable="d"
-        Title="Multi Log Viewer" Height="450" Width="800">
+        Title="Multi Log Viewer" Height="450" Width="800"
+        Background="{StaticResource WindowBackgroundBrush}">
     <DockPanel>
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="ファイル(_F)">
@@ -18,21 +19,27 @@
             </MenuItem>
         </Menu>
 
-        <ListView ItemsSource="{Binding LogEntries}">
-            <ListView.View>
-                <GridView>
-                    <GridViewColumn Width="150">
-                        <GridViewColumnHeader Click="TimestampHeader_Click">Timestamp</GridViewColumnHeader>
-                        <GridViewColumn.CellTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Timestamp}" />
-                            </DataTemplate>
-                        </GridViewColumn.CellTemplate>
-                    </GridViewColumn>
-                    <GridViewColumn Header="Level" DisplayMemberBinding="{Binding Level}" Width="80"/>
-                    <GridViewColumn Header="Message" DisplayMemberBinding="{Binding Message}" Width="500"/>
-                </GridView>
-            </ListView.View>
-        </ListView>
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="5">
+            <TextBlock Text="Filter:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+            <TextBox Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}" Width="200" />
+        </StackPanel>
+
+                                <DataGrid ItemsSource="{Binding LogEntriesView}">
+
+                                    <DataGrid.Columns>
+
+                                        <DataGridTextColumn Header="Timestamp" Binding="{Binding Timestamp}" Width="150" SortMemberPath="Timestamp"/>
+
+                                        <DataGridTextColumn Header="Level" Binding="{Binding Level}" Width="80" SortMemberPath="Level"/>
+
+                                        <DataGridTextColumn Header="Message" Binding="{Binding Message}" Width="*" SortMemberPath="Message"/>
+
+                                        <DataGridTextColumn Header="User" Binding="{Binding AdditionalData[user]}" Width="80" SortMemberPath="AdditionalData[user]"/>
+
+                                        <DataGridTextColumn Header="Session" Binding="{Binding AdditionalData[session]}" Width="80" SortMemberPath="AdditionalData[session]"/>
+
+                                    </DataGrid.Columns>
+
+                                </DataGrid>
     </DockPanel>
 </Window>
