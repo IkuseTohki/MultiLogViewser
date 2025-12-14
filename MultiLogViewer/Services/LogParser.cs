@@ -10,11 +10,13 @@ namespace MultiLogViewer.Services
     {
         private readonly Regex _regex;
         private readonly string _timestampFormat;
+        private readonly List<SubPatternConfig> _subPatterns;
 
         public LogParser(LogFormatConfig config)
         {
             _regex = new Regex(config.Pattern, RegexOptions.Compiled); // パフォーマンス向上のためCompiledオプションを付与
             _timestampFormat = config.TimestampFormat;
+            _subPatterns = config.SubPatterns;
         }
 
         public LogEntry? Parse(string logLine)
@@ -61,6 +63,39 @@ namespace MultiLogViewer.Services
                     group.Name != "timestamp" && group.Name != "message")
                 {
                     logEntry.AdditionalData[group.Name] = group.Value;
+                }
+            }
+
+            // サブパターンの適用
+            if (_subPatterns != null)
+            {
+                foreach (var subPattern in _subPatterns)
+                {
+                    string sourceValue = string.Empty;
+                    if (subPattern.SourceField == "message")
+                    {
+                        sourceValue = logEntry.Message;
+                    }
+                    else if (logEntry.AdditionalData.ContainsKey(subPattern.SourceField))
+                    {
+                        sourceValue = logEntry.AdditionalData[subPattern.SourceField];
+                    }
+
+                    if (!string.IsNullOrEmpty(sourceValue))
+                    {
+                        var subRegex = new Regex(subPattern.Pattern);
+                        var subMatch = subRegex.Match(sourceValue);
+                        if (subMatch.Success)
+                        {
+                            foreach (Group group in subMatch.Groups)
+                            {
+                                if (group.Name != "0" && group.Success)
+                                {
+                                    logEntry.AdditionalData[group.Name] = group.Value;
+                                }
+                            }
+                        }
+                    }
                 }
             }
 

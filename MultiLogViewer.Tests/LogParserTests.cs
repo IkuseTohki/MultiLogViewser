@@ -106,5 +106,42 @@ namespace MultiLogViewer.Tests
             // Assert
             Assert.IsNull(logEntry);
         }
+
+        /// <summary>
+        /// テスト観点: sub_patternsが定義されている場合、source_fieldで指定された項目の値からさらにデータが抽出され、AdditionalDataに追加されることを確認する。
+        /// </summary>
+        [TestMethod]
+        public void ParseLogEntry_WithSubPattern_ExtractsAdditionalData()
+        {
+            // Arrange
+            var config = new LogFormatConfig
+            {
+                Name = "AppLogWithDetails",
+                Pattern = @"^(?<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[(?<level>\w+)\] (?<message>.*)$",
+                TimestampFormat = "yyyy-MM-dd HH:mm:ss",
+                SubPatterns = new List<SubPatternConfig>
+                {
+                    new SubPatternConfig
+                    {
+                        SourceField = "message",
+                        Pattern = @"user=(?<user>\w+), duration=(?<duration>\d+), status=(?<status_code>\d+)"
+                    }
+                }
+            };
+            var logLine = "2023-10-27 12:00:00 [INFO] Request processed: user=admin, duration=123, status=200";
+            var parser = new LogParser(config);
+
+            // Act
+            var logEntry = parser.Parse(logLine);
+
+            // Assert
+            Assert.IsNotNull(logEntry);
+            Assert.AreEqual("Request processed: user=admin, duration=123, status=200", logEntry.Message);
+            Assert.HasCount(4, logEntry.AdditionalData);
+            Assert.AreEqual("INFO", logEntry.AdditionalData["level"]);
+            Assert.AreEqual("admin", logEntry.AdditionalData["user"]);
+            Assert.AreEqual("123", logEntry.AdditionalData["duration"]);
+            Assert.AreEqual("200", logEntry.AdditionalData["status_code"]);
+        }
     }
 }
