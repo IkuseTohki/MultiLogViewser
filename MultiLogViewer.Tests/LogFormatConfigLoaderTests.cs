@@ -9,7 +9,7 @@ namespace MultiLogViewer.Tests
     [TestClass]
     public class LogFormatConfigLoaderTests
     {
-        private string _tempFilePath;
+        private string? _tempFilePath;
 
         [TestInitialize]
         public void Setup()
@@ -20,9 +20,9 @@ namespace MultiLogViewer.Tests
         [TestCleanup]
         public void Cleanup()
         {
-            if (File.Exists(_tempFilePath))
+            if (File.Exists(_tempFilePath!))
             {
-                File.Delete(_tempFilePath);
+                File.Delete(_tempFilePath!);
             }
         }
 
@@ -68,12 +68,12 @@ log_formats:
         binding_path: ""AdditionalData[method]""
         width: 60
 ";
-            File.WriteAllText(_tempFilePath, yamlContent);
+            File.WriteAllText(_tempFilePath!, yamlContent);
 
             var loader = new LogFormatConfigLoader();
 
             // Act
-            var config = loader.Load(_tempFilePath);
+            var config = loader.Load(_tempFilePath!);
 
             // Assert
             Assert.IsNotNull(config);

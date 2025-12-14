@@ -37,8 +37,8 @@ namespace MultiLogViewer
         {
             base.OnStartup(e);
 
-            var mainWindow = _serviceProvider.GetService<MainWindow>();
-            mainWindow.DataContext = _serviceProvider.GetService<MainViewModel>();
+            var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
+            mainWindow.DataContext = _serviceProvider.GetRequiredService<MainViewModel>();
             mainWindow.Show();
         }
     }

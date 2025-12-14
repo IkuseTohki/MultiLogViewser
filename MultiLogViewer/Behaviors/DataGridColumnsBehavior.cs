@@ -45,13 +45,13 @@ namespace MultiLogViewer.Behaviors
             }
         }
 
-        private static void OnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e, DataGrid dataGrid)
+        private static void OnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e, DataGrid dataGrid)
         {
             // Regenerate columns when the collection changes
             GenerateColumns(dataGrid, sender as ObservableCollection<DisplayColumnConfig>);
         }
 
-        private static void GenerateColumns(DataGrid dataGrid, ObservableCollection<DisplayColumnConfig> columns)
+        private static void GenerateColumns(DataGrid dataGrid, ObservableCollection<DisplayColumnConfig>? columns)
         {
             dataGrid.Columns.Clear();
             if (columns == null)
