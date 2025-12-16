@@ -7,9 +7,9 @@ namespace MultiLogViewer.Services
 {
     public class LogFormatConfigLoader : ILogFormatConfigLoader
     {
-        public AppConfig Load(string filePath)
+        public AppConfig? Load(string configPath)
         {
-            if (!File.Exists(filePath))
+            if (!File.Exists(configPath))
             {
                 // ファイルが存在しない場合は、空のAppConfigを返すか、例外をスローするか、要検討。
                 // 現時点では空のAppConfigを返す。
@@ -20,7 +20,7 @@ namespace MultiLogViewer.Services
                 .WithNamingConvention(UnderscoredNamingConvention.Instance)
                 .Build();
 
-            using (var reader = new StreamReader(filePath))
+            using (var reader = new StreamReader(configPath))
             {
                 return deserializer.Deserialize<AppConfig>(reader);
             }

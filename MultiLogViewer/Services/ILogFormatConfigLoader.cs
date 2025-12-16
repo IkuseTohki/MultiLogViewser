@@ -4,6 +4,6 @@ namespace MultiLogViewer.Services
 {
     public interface ILogFormatConfigLoader
     {
-        AppConfig Load(string filePath);
+        AppConfig? Load(string filePath);
     }
 }

@@ -61,14 +61,21 @@ namespace MultiLogViewer.Behaviors
 
             foreach (var columnConfig in columns)
             {
+                var binding = new Binding(columnConfig.BindingPath)
+                {
+                    Mode = BindingMode.OneWay
+                };
+
+                if (!string.IsNullOrEmpty(columnConfig.StringFormat))
+                {
+                    binding.StringFormat = columnConfig.StringFormat;
+                }
+
                 var newColumn = new DataGridTextColumn
                 {
                     Header = columnConfig.Header,
                     Width = new DataGridLength(columnConfig.Width),
-                    Binding = new Binding(columnConfig.BindingPath)
-                    {
-                        Mode = BindingMode.OneWay
-                    },
+                    Binding = binding,
                     SortMemberPath = columnConfig.BindingPath
                 };
                 dataGrid.Columns.Add(newColumn);
