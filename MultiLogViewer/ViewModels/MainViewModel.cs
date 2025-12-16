@@ -1,14 +1,13 @@
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using MultiLogViewer.Models;
 using MultiLogViewer.Services;
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
-using System.Linq; // OrderBy, OrderByDescending を使用するため追加
-using System.Windows.Data; // for CollectionViewSource
-using System.Windows.Controls; // for DataGridAutoGeneratingColumnEventArgs
-using System.Windows; // for DataGridTextColumn
+using System.Linq;
+using System.Windows.Data;
 
 namespace MultiLogViewer.ViewModels
 {
@@ -17,6 +16,7 @@ namespace MultiLogViewer.ViewModels
         private readonly ILogFileReader _logFileReader;
         private readonly IUserDialogService _userDialogService;
         private readonly ILogFormatConfigLoader _logFormatConfigLoader;
+        private readonly IFileResolver _fileResolver;
 
         private readonly ObservableCollection<LogEntry> _logEntries = new();
         public ICollectionView LogEntriesView { get; }
@@ -37,14 +37,24 @@ namespace MultiLogViewer.ViewModels
             }
         }
 
-        public MainViewModel(ILogFileReader logFileReader, IUserDialogService userDialogService, ILogFormatConfigLoader logFormatConfigLoader)
+        public MainViewModel(
+            ILogFileReader logFileReader,
+            IUserDialogService userDialogService,
+            ILogFormatConfigLoader logFormatConfigLoader,
+            IFileResolver fileResolver)
         {
             _logFileReader = logFileReader;
             _userDialogService = userDialogService;
             _logFormatConfigLoader = logFormatConfigLoader;
+            _fileResolver = fileResolver;
+
             LogEntriesView = CollectionViewSource.GetDefaultView(_logEntries);
             LogEntriesView.Filter = FilterLogEntries;
+
+            InitializeLogs();
         }
+
+
 
         private bool FilterLogEntries(object obj)
         {
@@ -59,40 +69,46 @@ namespace MultiLogViewer.ViewModels
             return false;
         }
 
-        [RelayCommand]
-        private void OpenFile()
+        private void InitializeLogs()
         {
-            var filePath = _userDialogService.OpenFileDialog();
-            if (filePath != null)
+            var appConfig = _logFormatConfigLoader.Load(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.yaml"));
+            if (appConfig == null)
             {
-                // config.yaml から設定を読み込む
-                // TODO: ユーザーがどのLogFormatConfigを使用するかを選択するUIが必要。
-                //       現時点では、最初のConfigを決め打ちで使用する。
-                //       将来的には、設定ファイルから読み込んだConfigを選択できるようにする。
-                var appConfig = _logFormatConfigLoader.Load(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.yaml"));
-                if (appConfig.LogFormats == null || !appConfig.LogFormats.Any())
-                {
-                    // 設定ファイルが見つからないか、LogFormatsが定義されていない場合はエラー処理
-                    _userDialogService.ShowError("Log format configuration not found or empty in config.yaml.", "Error");
-                    return;
-                }
-                var logFormatConfig = appConfig.LogFormats.First(); // 最初の設定を決め打ちで使用
-
-                _logEntries.Clear();
-                foreach (var entry in _logFileReader.Read(filePath, logFormatConfig))
-                {
-                    _logEntries.Add(entry);
-                }
-
-                // 選択されたLogFormatConfigからDisplayColumnsを更新
-                DisplayColumns.Clear();
-                foreach (var column in logFormatConfig.DisplayColumns)
-                {
-                    DisplayColumns.Add(column);
-                }
-
-                LogEntriesView.Refresh(); // データが変更されたことをViewに通知
+                _userDialogService.ShowError("Could not load or parse config.yaml.", "Error");
+                return;
             }
+
+            // DisplayColumns を設定
+            if (appConfig.DisplayColumns != null && appConfig.DisplayColumns.Any())
+            {
+                DisplayColumns = new ObservableCollection<DisplayColumnConfig>(appConfig.DisplayColumns);
+            }
+
+            // LogFormats からログを読み込む
+            if (appConfig.LogFormats == null || !appConfig.LogFormats.Any())
+            {
+                return;
+            }
+
+            var allEntries = new List<LogEntry>();
+            foreach (var logFormatConfig in appConfig.LogFormats)
+            {
+                if (logFormatConfig.LogFilePatterns != null && logFormatConfig.LogFilePatterns.Any())
+                {
+                    var filePaths = _fileResolver.Resolve(logFormatConfig.LogFilePatterns);
+                    var entries = _logFileReader.ReadFiles(filePaths, logFormatConfig);
+                    allEntries.AddRange(entries);
+                }
+            }
+
+            // エントリをタイムスタンプでソートしてコレクションに追加
+            _logEntries.Clear();
+            foreach (var entry in allEntries.OrderBy(e => e.Timestamp))
+            {
+                _logEntries.Add(entry);
+            }
+
+            LogEntriesView.Refresh();
         }
     }
 }

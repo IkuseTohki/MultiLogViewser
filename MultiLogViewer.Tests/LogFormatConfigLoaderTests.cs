@@ -9,94 +9,47 @@ namespace MultiLogViewer.Tests
     [TestClass]
     public class LogFormatConfigLoaderTests
     {
-        private string? _tempFilePath;
-
-        [TestInitialize]
-        public void Setup()
-        {
-            _tempFilePath = Path.GetTempFileName();
-        }
-
-        [TestCleanup]
-        public void Cleanup()
-        {
-            if (File.Exists(_tempFilePath!))
-            {
-                File.Delete(_tempFilePath!);
-            }
-        }
-
         /// <summary>
-        /// テスト観点: 有効なYAML設定ファイルが正しくデシリアライズされ、AppConfigオブジェクトが生成されることを確認する。
+        /// テスト観点: TestConfigs/valid_config.yaml ファイルが正しく読み込まれ、AppConfigオブジェクトが生成されることを確認する。
         /// </summary>
         [TestMethod]
         public void LoadConfig_ValidYamlFile_ReturnsAppConfig()
         {
             // Arrange
-            var yamlContent = @"
-log_formats:
-  - name: ""ApplicationLog""
-    pattern: ""^(?<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}) \\[(?<level>\\w+)\\] (?<message>.*)$""
-    timestamp_format: ""yyyy-MM-dd HH:mm:ss""
-    display_columns:
-      - header: ""Timestamp""
-        binding_path: ""Timestamp""
-        width: 150
-      - header: ""Level""
-        binding_path: ""Level""
-        width: 80
-      - header: ""Message""
-        binding_path: ""Message""
-        width: 500
-      - header: ""User""
-        binding_path: ""AdditionalData[user]""
-        width: 80
-  - name: ""WebServerLog""
-    pattern: ""^(?<level>\\w+) \\d+ (?<timestamp>\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.\\d{3}Z) (?<message>.*)$""
-    timestamp_format: ""yyyy-MM-ddTHH:mm:ss.fffZ""
-    display_columns:
-      - header: ""Timestamp""
-        binding_path: ""Timestamp""
-        width: 180
-      - header: ""Level""
-        binding_path: ""Level""
-        width: 80
-      - header: ""Message""
-        binding_path: ""Message""
-        width: 400
-      - header: ""Method""
-        binding_path: ""AdditionalData[method]""
-        width: 60
-";
-            File.WriteAllText(_tempFilePath!, yamlContent);
-
+            var configPath = "TestConfigs/valid_config.yaml";
             var loader = new LogFormatConfigLoader();
 
             // Act
-            var config = loader.Load(_tempFilePath!);
+            var config = loader.Load(configPath);
 
             // Assert
             Assert.IsNotNull(config);
+
+            // トップレベルのDisplayColumnsを検証
+            Assert.IsNotNull(config.DisplayColumns);
+            Assert.AreEqual(4, config.DisplayColumns.Count);
+            Assert.AreEqual("Timestamp", config.DisplayColumns[0].Header);
+            Assert.AreEqual("AdditionalData[user]", config.DisplayColumns[3].BindingPath);
+
+            // LogFormatsを検証
             Assert.IsNotNull(config.LogFormats);
-            Assert.HasCount(2, config.LogFormats);
+            Assert.AreEqual(2, config.LogFormats.Count);
 
             var appLog = config.LogFormats[0];
             Assert.AreEqual("ApplicationLog", appLog.Name);
-            Assert.AreEqual("^(?<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}) \\[(?<level>\\w+)\\] (?<message>.*)$", appLog.Pattern);
+            Assert.AreEqual(@"^(?<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[(?<level>\w+)\] (?<message>.*)$", appLog.Pattern);
             Assert.AreEqual("yyyy-MM-dd HH:mm:ss", appLog.TimestampFormat);
-            Assert.IsNotNull(appLog.DisplayColumns);
-            Assert.HasCount(4, appLog.DisplayColumns);
-            Assert.AreEqual("User", appLog.DisplayColumns[3].Header);
-            Assert.AreEqual("AdditionalData[user]", appLog.DisplayColumns[3].BindingPath);
+            Assert.IsNotNull(appLog.LogFilePatterns);
+            Assert.AreEqual(1, appLog.LogFilePatterns.Count);
+            Assert.AreEqual("app_*.log", appLog.LogFilePatterns[0]);
 
             var webLog = config.LogFormats[1];
             Assert.AreEqual("WebServerLog", webLog.Name);
-            Assert.AreEqual("^(?<level>\\w+) \\d+ (?<timestamp>\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.\\d{3}Z) (?<message>.*)$", webLog.Pattern);
+            Assert.AreEqual(@"^(?<level>\w+) \d+ (?<timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z) (?<message>.*)$", webLog.Pattern);
             Assert.AreEqual("yyyy-MM-ddTHH:mm:ss.fffZ", webLog.TimestampFormat);
-            Assert.IsNotNull(webLog.DisplayColumns);
-            Assert.HasCount(4, webLog.DisplayColumns);
-            Assert.AreEqual("Method", webLog.DisplayColumns[3].Header);
-            Assert.AreEqual("AdditionalData[method]", webLog.DisplayColumns[3].BindingPath);
+            Assert.IsNotNull(webLog.LogFilePatterns);
+            Assert.AreEqual(1, webLog.LogFilePatterns.Count);
+            Assert.AreEqual("web_*.log", webLog.LogFilePatterns[0]);
         }
 
         /// <summary>
@@ -114,7 +67,9 @@ log_formats:
             // Assert
             Assert.IsNotNull(config);
             Assert.IsNotNull(config.LogFormats);
-            Assert.IsEmpty(config.LogFormats);
+            Assert.AreEqual(0, config.LogFormats.Count);
+            Assert.IsNotNull(config.DisplayColumns);
+            Assert.AreEqual(0, config.DisplayColumns.Count);
         }
     }
 }

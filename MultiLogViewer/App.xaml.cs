@@ -23,6 +23,7 @@ namespace MultiLogViewer
         {
             // Services
             services.AddSingleton<ILogFileReader, LogFileReader>();
+            services.AddSingleton<IFileResolver, FileResolver>();
             services.AddSingleton<IUserDialogService, WpfUserDialogService>();
             services.AddSingleton<ILogFormatConfigLoader, LogFormatConfigLoader>();
 

@@ -29,5 +29,20 @@ namespace MultiLogViewer.Services
                 }
             }
         }
+
+        public IEnumerable<LogEntry> ReadFiles(IEnumerable<string> filePaths, LogFormatConfig config)
+        {
+            if (filePaths == null || !filePaths.Any())
+            {
+                return Enumerable.Empty<LogEntry>();
+            }
+
+            var allLogEntries = new List<LogEntry>();
+            foreach (var filePath in filePaths)
+            {
+                allLogEntries.AddRange(Read(filePath, config));
+            }
+            return allLogEntries;
+        }
     }
 }

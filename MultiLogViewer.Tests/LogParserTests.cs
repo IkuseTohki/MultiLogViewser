@@ -36,7 +36,7 @@ namespace MultiLogViewer.Tests
 .InvariantCulture), logEntry.Timestamp);
             Assert.AreEqual("INFO", logEntry.AdditionalData["level"]);
             Assert.AreEqual("User logged in successfully.", logEntry.Message);
-            Assert.HasCount(1, logEntry.AdditionalData); // levelのみが格納されるため、Countは1
+            Assert.AreEqual(1, logEntry.AdditionalData.Count); // levelのみが格納されるため、Countは1
         }
 
         /// <summary>
@@ -68,7 +68,7 @@ namespace MultiLogViewer.Tests
 
             Assert.AreEqual("Data processed.", logEntry.Message);
 
-            Assert.HasCount(3, logEntry.AdditionalData);
+            Assert.AreEqual(3, logEntry.AdditionalData.Count);
 
             Assert.IsTrue(logEntry.AdditionalData.ContainsKey("level"));
 
@@ -137,7 +137,7 @@ namespace MultiLogViewer.Tests
             // Assert
             Assert.IsNotNull(logEntry);
             Assert.AreEqual("Request processed: user=admin, duration=123, status=200", logEntry.Message);
-            Assert.HasCount(4, logEntry.AdditionalData);
+            Assert.AreEqual(4, logEntry.AdditionalData.Count);
             Assert.AreEqual("INFO", logEntry.AdditionalData["level"]);
             Assert.AreEqual("admin", logEntry.AdditionalData["user"]);
             Assert.AreEqual("123", logEntry.AdditionalData["duration"]);

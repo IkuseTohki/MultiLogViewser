@@ -11,14 +11,21 @@ namespace MultiLogViewer.Tests
     [TestClass]
     public class LogFileReaderTests
     {
-        private const string TestLogFileName = "test.log";
+        private string _tempDirectory = "";
+
+        [TestInitialize]
+        public void Setup()
+        {
+            _tempDirectory = Path.Combine(Path.GetTempPath(), "MLV_Tests_" + Path.GetRandomFileName());
+            Directory.CreateDirectory(_tempDirectory);
+        }
 
         [TestCleanup]
         public void Cleanup()
         {
-            if (File.Exists(TestLogFileName))
+            if (Directory.Exists(_tempDirectory))
             {
-                File.Delete(TestLogFileName);
+                Directory.Delete(_tempDirectory, true);
             }
         }
 
@@ -26,7 +33,7 @@ namespace MultiLogViewer.Tests
         /// テスト観点: 有効なログファイルを渡した場合、正しくLogEntryのリストが生成されることを確認する。
         /// </summary>
         [TestMethod]
-        public void ReadLogFile_ValidFile_ReturnsLogEntries()
+        public void Read_ValidFile_ReturnsLogEntries()
         {
             // Arrange
             var config = new LogFormatConfig
@@ -41,17 +48,17 @@ namespace MultiLogViewer.Tests
                 "2023-10-26 10:31:00 [WARN] Deprecated API called.",
                 "Invalid line should be skipped."
             };
-            File.WriteAllLines(TestLogFileName, logLines);
+            var testLogFile = Path.Combine(_tempDirectory, "single_test.log");
+            File.WriteAllLines(testLogFile, logLines);
+
+            var reader = new LogFileReader();
 
             // Act
-            // TODO: LogFileReaderクラスはまだ存在しないため、コンパイルエラーになる。
-            //       後で LogFileReader クラスを作成する。
-            var reader = new LogFileReader();
-            var logEntries = reader.Read(TestLogFileName, config);
+            var logEntries = reader.Read(testLogFile, config).ToList();
 
             // Assert
             Assert.IsNotNull(logEntries);
-            Assert.AreEqual(2, logEntries.Count());
+            Assert.AreEqual(2, logEntries.Count);
 
             var firstEntry = logEntries.First();
             Assert.AreEqual(new DateTime(2023, 10, 26, 10, 30, 45), firstEntry.Timestamp);
@@ -62,6 +69,53 @@ namespace MultiLogViewer.Tests
             Assert.AreEqual(new DateTime(2023, 10, 26, 10, 31, 00), secondEntry.Timestamp);
             Assert.AreEqual("WARN", secondEntry.AdditionalData["level"]);
             Assert.AreEqual("Deprecated API called.", secondEntry.Message);
+        }
+
+        /// <summary>
+        /// テスト観点: 複数のログファイルを指定した場合、ReadFilesメソッドがそれらすべてを読み込み、
+        /// 正しくLogEntryのリストを結合して返すことを確認する。
+        /// </summary>
+        [TestMethod]
+        public void ReadFiles_MultipleFiles_ReturnsCombinedLogEntries()
+        {
+            // Arrange
+            var config = new LogFormatConfig
+            {
+                Name = "ApplicationLog",
+                Pattern = @"^(?<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[(?<level>\w+)\] (?<message>.*)$",
+                TimestampFormat = "yyyy-MM-dd HH:mm:ss"
+            };
+
+            var logLines1 = new[]
+            {
+                "2023-10-26 10:00:00 [INFO] Log from file1 line1",
+                "2023-10-26 10:00:01 [WARN] Log from file1 line2"
+            };
+            string filePath1 = Path.Combine(_tempDirectory, "file1.log");
+            File.WriteAllLines(filePath1, logLines1);
+
+            var logLines2 = new[]
+            {
+                "2023-10-26 10:00:02 [DEBUG] Log from file2 line1",
+                "2023-10-26 10:00:03 [ERROR] Log from file2 line2"
+            };
+            string filePath2 = Path.Combine(_tempDirectory, "file2.log");
+            File.WriteAllLines(filePath2, logLines2);
+
+            var filePaths = new List<string> { filePath1, filePath2 };
+
+            var reader = new LogFileReader();
+
+            // Act
+            var logEntries = reader.ReadFiles(filePaths, config).ToList();
+
+            // Assert
+            Assert.IsNotNull(logEntries);
+            Assert.AreEqual(4, logEntries.Count); // 2ファイル x 2行 = 4エントリ
+
+            // 含まれる内容の一部を確認
+            Assert.IsTrue(logEntries.Any(e => e.Message == "Log from file1 line1"));
+            Assert.IsTrue(logEntries.Any(e => e.Message == "Log from file2 line2"));
         }
     }
 }

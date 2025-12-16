@@ -8,36 +8,38 @@
 
 ### 2.1 ログフォーマット設定
 
-- **方法**: YAML 形式の設定ファイルを用いて、ログファイルのフォーマットを定義します。
+- **方法**: YAML 形式の設定ファイルを用いて、ログファイルのフォーマットと対象ファイルを定義します。
 - **内容**:
-  - ログ 1 行全体に適用するプライマリな正規表現（`pattern`）を定義します。
-  - 抽出する項目には名前を付け（例: `timestamp`, `level`, `message`）、`LogEntry`オブジェクトに格納します。
-    - `timestamp`と`message`は基本的な項目として扱われますが、それ以外（`level`を含む）は`AdditionalData`に格納されます。
-  - **（新規）** 特定のフィールド（例: `message`）の内容をさらにパースするため、追加の正規表現（`sub_patterns`）を定義できます。
+  - **対象ファイル**: `log_file_patterns` に、このフォーマットを適用するログファイルの glob パターンをリスト形式で指定します。
+  - **パースルール**:
+    - ログ 1 行全体に適用するプライマリな正規表現（`pattern`）を定義します。
+    - 抽出する項目には名前を付け（例: `timestamp`, `level`, `message`）、`LogEntry`オブジェクトに格納します。
+      - `timestamp`と`message`は基本的な項目として扱われますが、それ以外（`level`を含む）は`AdditionalData`に格納されます。
+    - 特定のフィールド（例: `message`）の内容をさらにパースするため、追加の正規表現（`sub_patterns`）を定義できます。
 - **例**:
 
   ```yaml
   log_formats:
     - name: "ApplicationLog"
-      pattern: "^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[(?<level>\w+)\] (?<message>.*)$"
+      log_file_patterns:
+        - "C:\\Logs\\App\\*.log"
+        - "C:\\Logs\\Old\\app-*.log"
+      pattern: "^(?<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}) \\\\[(?<level>\\w+)\\] (?<message>.*)$"
       timestamp_format: "yyyy-MM-dd HH:mm:ss"
       sub_patterns:
         - source_field: "message"
-          pattern: "User '(?<user>\w+)' from (?<ip>[\d\.]+)"
-      display_columns:
-        - { header: "Timestamp", binding_path: "Timestamp", width: 150 }
-        - { header: "Level", binding_path: "AdditionalData[level]", width: 80 }
-        - { header: "Message", binding_path: "Message", width: 400 }
-        - { header: "User", binding_path: "AdditionalData[user]", width: 80 }
-        - { header: "IP", binding_path: "AdditionalData[ip]", width: 100 }
+          pattern: "User '(?<user>\\w+)' from (?<ip>[\\d\\.]+)"
   ```
 
 ### 2.2 ログの読み込みとパース
 
-- 設定された`pattern`に基づき、指定されたログファイルを読み込み、各行を構造化されたデータ（ログエントリ）にパースします。
-  - `timestamp`, `message`は`LogEntry`の固定プロパティに格納されます。
-  - それ以外の名前付きキャプチャグループ（`level`を含む）は、`LogEntry`の`AdditionalData`プロパティ（キーと値のペア）に格納されます。
-- **（新規）** `sub_patterns`が定義されている場合、`source_field`で指定された項目の値に対して追加の正規表現パースが実行され、キャプチャされた結果が`AdditionalData`に追加されます。
+- **読み込みトリガー**: アプリケーション起動時に、設定ファイルに基づきログの読み込みを自動的に開始します。手動でのファイル選択機能は廃止します。
+- **処理フロー**:
+  1. 各`log_format`定義内の`log_file_patterns`を元に、一致する全てのログファイルを検索します。
+  2. 該当するログファイルを、対応する`pattern`と`sub_patterns`を用いて一行ずつパースし、構造化されたデータ（ログエントリ）に変換します。
+     - `timestamp`, `message`は`LogEntry`の固定プロパティに格納されます。
+     - それ以外の名前付きキャプチャグループ（`level`を含む）は、`LogEntry`の`AdditionalData`プロパティ（キーと値のペア）に格納されます。
+  3. 全てのフォーマット・ファイルから集約したログエントリをビューに表示します。
 
 ### 2.3 時刻によるソート
 
@@ -49,10 +51,19 @@
 - メッセージ内容に対するキーワード検索機能を提供します。（実装済み）
 - （予定）ログレベルなど、特定の項目に対するフィルタ機能。
 
-### 2.5 項目抽出と列表示
+### 2.5 表示列の定義と表示
 
-- `display_columns`で定義された項目が、`DataGrid`の列として表示されます。
-- `binding_path`には、`Timestamp`, `Message`といった固定プロパティ名や、`AdditionalData[key]`という形式で`AdditionalData`内の項目を指定できます。
+- **方法**: YAML 設定ファイルのトップレベルに `display_columns` を定義し、アプリケーション全体で表示する列を一元管理します。
+- **内容**: `display_columns`で定義された項目が、`DataGrid`の列として表示されます。
+- **バインディング**: `binding_path`には、`Timestamp`, `Message`といった固定プロパティ名や、`AdditionalData[key]`という形式で`AdditionalData`内の項目を指定できます。あるログエントリに指定されたキーが存在しない場合、そのセルは空欄で表示されます。
+- **例**:
+
+  ```yaml
+  display_columns:
+    - { header: "Timestamp", binding_path: "Timestamp", width: 150 }
+    - { header: "Level", binding_path: "AdditionalData[level]", width: 80 }
+    - { header: "Message", binding_path: "Message", width: 400 }
+  ```
 
 ## 3. 技術スタック
 
