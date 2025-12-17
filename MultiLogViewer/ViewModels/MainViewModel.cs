@@ -68,28 +68,15 @@ namespace MultiLogViewer.ViewModels
 
             LogEntriesView = CollectionViewSource.GetDefaultView(_logEntries);
             LogEntriesView.Filter = FilterLogEntries;
-
-            InitializeLogs();
         }
 
-
-
-        private bool FilterLogEntries(object obj)
+        /// <summary>
+        /// ViewModel を初期化し、指定された設定ファイルからログを読み込みます。
+        /// </summary>
+        /// <param name="configPath">設定ファイルのパス。</param>
+        public void Initialize(string configPath)
         {
-            if (obj is LogEntry entry)
-            {
-                if (string.IsNullOrWhiteSpace(FilterText))
-                {
-                    return true;
-                }
-                return entry.Message.Contains(FilterText, System.StringComparison.OrdinalIgnoreCase);
-            }
-            return false;
-        }
-
-        private void InitializeLogs()
-        {
-            var appConfig = _logFormatConfigLoader.Load(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.yaml"));
+            var appConfig = _logFormatConfigLoader.Load(configPath);
             if (appConfig == null)
             {
                 _userDialogService.ShowError("Could not load or parse config.yaml.", "Error");
@@ -127,6 +114,19 @@ namespace MultiLogViewer.ViewModels
             }
 
             LogEntriesView.Refresh();
+        }
+
+        private bool FilterLogEntries(object obj)
+        {
+            if (obj is LogEntry entry)
+            {
+                if (string.IsNullOrWhiteSpace(FilterText))
+                {
+                    return true;
+                }
+                return entry.Message.Contains(FilterText, System.StringComparison.OrdinalIgnoreCase);
+            }
+            return false;
         }
     }
 }

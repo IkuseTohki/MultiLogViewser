@@ -26,6 +26,7 @@ namespace MultiLogViewer
             services.AddSingleton<IFileResolver, FileResolver>();
             services.AddSingleton<IUserDialogService, WpfUserDialogService>();
             services.AddSingleton<ILogFormatConfigLoader, LogFormatConfigLoader>();
+            services.AddSingleton<IConfigPathResolver, ConfigPathResolver>();
 
             // ViewModels
             services.AddTransient<MainViewModel>();
@@ -38,8 +39,13 @@ namespace MultiLogViewer
         {
             base.OnStartup(e);
 
+            var configPathResolver = _serviceProvider.GetRequiredService<IConfigPathResolver>();
+            var configPath = configPathResolver.ResolvePath(e.Args);
+
             var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
-            mainWindow.DataContext = _serviceProvider.GetRequiredService<MainViewModel>();
+            var mainViewModel = _serviceProvider.GetRequiredService<MainViewModel>();
+            mainViewModel.Initialize(configPath); // 新しい初期化メソッドを呼び出す
+            mainWindow.DataContext = mainViewModel;
             mainWindow.Show();
         }
     }
