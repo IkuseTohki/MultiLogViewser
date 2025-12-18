@@ -117,5 +117,57 @@ namespace MultiLogViewer.Tests
             Assert.IsTrue(logEntries.Any(e => e.Message == "Log from file1 line1"));
             Assert.IsTrue(logEntries.Any(e => e.Message == "Log from file2 line2"));
         }
+
+        /// <summary>
+        /// テスト観点: Shift-JISでエンコードされたログファイルが正しく読み込まれることを確認する。
+        /// </summary>
+        [TestMethod]
+        public void Read_ShiftJisFile_ReturnsCorrectContent()
+        {
+            // Arrange
+            var config = new LogFormatConfig
+            {
+                Name = "TestLog",
+                Pattern = @"^(?<message>.*)$", // メッセージ全体を読み込むシンプルなパターン
+                TimestampFormat = "" // タイムスタンプは不要
+            };
+            var testLogFile = Path.Combine("TestLogs", "shift_jis_log.log");
+
+            var reader = new LogFileReader();
+
+            // Act
+            var logEntries = reader.Read(testLogFile, config).ToList();
+
+            // Assert
+            Assert.IsNotNull(logEntries);
+            Assert.AreEqual(1, logEntries.Count);
+            Assert.AreEqual("テストログファイル(Shift-JIS)", logEntries.First().Message);
+        }
+
+        /// <summary>
+        /// テスト観点: UTF-8でエンコードされたログファイルが正しく読み込まれることを確認する。
+        /// </summary>
+        [TestMethod]
+        public void Read_Utf8File_ReturnsCorrectContent()
+        {
+            // Arrange
+            var config = new LogFormatConfig
+            {
+                Name = "TestLog",
+                Pattern = @"^(?<message>.*)$", // メッセージ全体を読み込むシンプルなパターン
+                TimestampFormat = "" // タイムスタンプは不要
+            };
+            var testLogFile = Path.Combine("TestLogs", "utf8_log.log");
+
+            var reader = new LogFileReader();
+
+            // Act
+            var logEntries = reader.Read(testLogFile, config).ToList();
+
+            // Assert
+            Assert.IsNotNull(logEntries);
+            Assert.AreEqual(1, logEntries.Count);
+            Assert.AreEqual("テストログファイル(UTF-8)", logEntries.First().Message);
+        }
     }
 }

@@ -2,6 +2,7 @@ using MultiLogViewer.Models;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Ude;
 
 namespace MultiLogViewer.Services
 {
@@ -20,14 +21,66 @@ namespace MultiLogViewer.Services
 
             var parser = new LogParser(config);
 
-            foreach (var line in File.ReadLines(filePath))
+            using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
             {
-                var entry = parser.Parse(line);
-                if (entry != null)
+                // エンコーディングを自動判別
+                System.Text.Encoding encoding = DetectFileEncoding(fs);
+                fs.Seek(0, SeekOrigin.Begin); // ストリームを先頭に戻す
+
+                using (var streamReader = new StreamReader(fs, encoding))
                 {
-                    yield return entry;
+                    string line;
+                    while ((line = streamReader.ReadLine()) != null)
+                    {
+                        var entry = parser.Parse(line);
+                        if (entry != null)
+                        {
+                            yield return entry;
+                        }
+                    }
                 }
             }
+        }
+
+        /// <summary>
+        /// ファイルの文字コードを自動判別します。
+        /// </summary>
+        /// <param name="fileStream">判別するファイルのFileStream。</param>
+        /// <returns>判別された文字コード。判別できなかった場合はUTF8を返します。</returns>
+        private System.Text.Encoding DetectFileEncoding(FileStream fileStream)
+        {
+            var cdet = new CharsetDetector();
+            cdet.Feed(fileStream); // ここでストリームの一部を読み込む
+            cdet.DataEnd();
+
+            if (cdet.Charset != null)
+            {
+                // Shift-JIS の場合は明示的にコードページ 932 を指定
+                if (cdet.Charset.Equals("Shift-JIS", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    try
+                    {
+                        return System.Text.Encoding.GetEncoding(932); // コードページ932 (Shift-JIS) を試す
+                    }
+                    catch (System.ArgumentException _)
+                    {
+                        return System.Text.Encoding.UTF8; // フォールバック
+                    }
+                }
+
+                try
+                {
+                    string charsetName = cdet.Charset.Replace('-', '_'); // ハイフンをアンダースコアに変換
+                    return System.Text.Encoding.GetEncoding(charsetName);
+                }
+                catch (System.ArgumentException _)
+                {
+                    // サポートされていないエンコーディングの場合はUTF8をフォールバック
+                    return System.Text.Encoding.UTF8;
+                }
+            }
+            // 判別できなかった場合はUTF8を返す
+            return System.Text.Encoding.UTF8;
         }
 
         public IEnumerable<LogEntry> ReadFiles(IEnumerable<string> filePaths, LogFormatConfig config)

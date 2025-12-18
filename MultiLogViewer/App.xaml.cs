@@ -39,6 +39,9 @@ namespace MultiLogViewer
         {
             base.OnStartup(e);
 
+            // .NET Core/.NET 5+ で Shift-JIS などのコードページエンコーディングをサポートするために登録
+            System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+
             var configPathResolver = _serviceProvider.GetRequiredService<IConfigPathResolver>();
             var configPath = configPathResolver.ResolvePath(e.Args);
 
