@@ -56,9 +56,18 @@ log_formats:
 
 1. 各`log_format`定義内の`log_file_patterns`（glob パターン）を`FileResolver`サービスが解決し、一致するすべてのログファイルパスのリストを取得します。
 2. 該当するログファイルを、対応する`pattern`と`sub_patterns`を用いて一行ずつパースし、構造化されたデータ（ログエントリ）に変換します。
-   - `timestamp`, `message`は`LogEntry`の固定プロパティに格納されます。
-   - それ以外の名前付きキャプチャグループ（`level`を含む）は、`LogEntry`の`AdditionalData`プロパティ（キーと値のペア）に格納されます。
-3. すべてのフォーマット・ファイルから集約したログエントリをビューに表示します。
+3. `LogFileReader`は、各ログエントリがどのファイルの何行目から読み込まれたかという情報も付与します。
+4. すべてのフォーマット・ファイルから集約したログエントリをビューに表示します。
+
+**LogEntry オブジェクトの構造**
+
+各ログエントリは、以下の情報を持つオブジェクトとして表現されます。
+
+- `Timestamp` (DateTime): ログのタイムスタンプ
+- `Message` (string): ログメッセージ
+- `FileName` (string): ログの発生元ファイル名
+- `LineNumber` (int): ログの発生元ファイルにおける行番号
+- `AdditionalData` (Dictionary<string, string>): `level`など、正規表現で抽出されたその他のデータ
 
 ### 2.4 時刻によるソート
 
@@ -85,7 +94,7 @@ YAML 設定ファイルのトップレベルに `display_columns` を定義し�
 `display_columns`の各項目には以下のプロパティを指定します。
 
 - `header`: 列のヘッダー名。
-- `binding_path`: `Timestamp`, `Message`といった固定プロパティ名や、`AdditionalData[key]`という形式で`AdditionalData`内の項目を指定します。あるログエントリに指定されたキーが存在しない場合、そのセルは空欄で表示されます。
+- `binding_path`: `Timestamp`, `Message`, `FileName`, `LineNumber`といった固定プロパティ名や、`AdditionalData[key]`という形式で`AdditionalData`内の項目を指定します。あるログエントリに指定されたキーが存在しない場合、そのセルは空欄で表示されます。
 - `width`: 列の幅。
 - `string_format` (オプション): `DateTime`などの値を特定の書式で表示する場合に指定します (例: `"yyyy/MM/dd HH:mm:ss.fff"`)。
 
@@ -101,6 +110,8 @@ display_columns:
     }
   - { header: "Level", binding_path: "AdditionalData[level]", width: 80 }
   - { header: "Message", binding_path: "Message", width: 400 }
+  - { header: "File", binding_path: "FileName", width: 150 }
+  - { header: "Line", binding_path: "LineNumber", width: 60 }
 ```
 
 ## 3. 技術スタック

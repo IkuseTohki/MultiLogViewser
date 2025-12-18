@@ -25,18 +25,21 @@ namespace MultiLogViewer.Tests
                 TimestampFormat = "yyyy-MM-dd HH:mm:ss"
             };
             var logLine = "2023-10-26 10:30:45 [INFO] User logged in successfully.";
+            var fileName = "test.log";
+            var lineNumber = 123;
             var parser = new LogParser(config);
 
             // Act
-            var logEntry = parser.Parse(logLine);
+            var logEntry = parser.Parse(logLine, fileName, lineNumber);
 
             // Assert
             Assert.IsNotNull(logEntry);
-            Assert.AreEqual(DateTime.ParseExact("2023-10-26 10:30:45", "yyyy-MM-dd HH:mm:ss", CultureInfo
-.InvariantCulture), logEntry.Timestamp);
+            Assert.AreEqual(DateTime.ParseExact("2023-10-26 10:30:45", "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture), logEntry.Timestamp);
             Assert.AreEqual("INFO", logEntry.AdditionalData["level"]);
             Assert.AreEqual("User logged in successfully.", logEntry.Message);
             Assert.AreEqual(1, logEntry.AdditionalData.Count); // levelのみが格納されるため、Countは1
+            Assert.AreEqual(fileName, logEntry.FileName);
+            Assert.AreEqual(lineNumber, logEntry.LineNumber);
         }
 
         /// <summary>
@@ -56,7 +59,7 @@ namespace MultiLogViewer.Tests
             var parser = new LogParser(config);
 
             // Act
-            var logEntry = parser.Parse(logLine);
+            var logEntry = parser.Parse(logLine, "test.log", 1);
 
             // Assert
 
@@ -101,7 +104,7 @@ namespace MultiLogViewer.Tests
             var parser = new LogParser(config);
 
             // Act
-            var logEntry = parser.Parse(logLine);
+            var logEntry = parser.Parse(logLine, "test.log", 1);
 
             // Assert
             Assert.IsNull(logEntry);
@@ -132,7 +135,7 @@ namespace MultiLogViewer.Tests
             var parser = new LogParser(config);
 
             // Act
-            var logEntry = parser.Parse(logLine);
+            var logEntry = parser.Parse(logLine, "test.log", 1);
 
             // Assert
             Assert.IsNotNull(logEntry);

@@ -19,7 +19,7 @@ namespace MultiLogViewer.Services
             _subPatterns = config.SubPatterns;
         }
 
-        public LogEntry? Parse(string logLine)
+        public LogEntry? Parse(string logLine, string fileName, int lineNumber)
         {
             var match = _regex.Match(logLine);
 
@@ -28,7 +28,11 @@ namespace MultiLogViewer.Services
                 return null;
             }
 
-            var logEntry = new LogEntry();
+            var logEntry = new LogEntry
+            {
+                FileName = fileName,
+                LineNumber = lineNumber
+            };
 
             // Timestampのパース
             if (match.Groups["timestamp"].Success)

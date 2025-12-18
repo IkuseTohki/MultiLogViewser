@@ -30,9 +30,13 @@ namespace MultiLogViewer.Services
                 using (var streamReader = new StreamReader(fs, encoding))
                 {
                     string line;
+                    int lineNumber = 0; // 行番号をカウントする変数を導入
+                    string fileName = Path.GetFileName(filePath); // ファイル名を事前に取得
+
                     while ((line = streamReader.ReadLine()) != null)
                     {
-                        var entry = parser.Parse(line);
+                        lineNumber++;
+                        var entry = parser.Parse(line, fileName, lineNumber); // ファイル名と行番号を渡す
                         if (entry != null)
                         {
                             yield return entry;
