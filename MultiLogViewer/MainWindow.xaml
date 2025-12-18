@@ -17,6 +17,8 @@
         </StackPanel>
 
         <DataGrid ItemsSource="{Binding LogEntriesView}"
+                  CanUserResizeColumns="True"
+                  CanUserReorderColumns="True"
                   behaviors:DataGridColumnsBehavior.BindableColumns="{Binding DisplayColumns}">
         </DataGrid>
     </DockPanel>
