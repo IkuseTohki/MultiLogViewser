@@ -191,7 +191,9 @@ namespace MultiLogViewer.ViewModels
                 {
                     return true;
                 }
-                return entry.Message.Contains(FilterText, System.StringComparison.OrdinalIgnoreCase);
+
+                var criteria = new SearchCriteria(FilterText, false, false);
+                return _logSearchService.IsMatch(entry, criteria);
             }
             return false;
         }

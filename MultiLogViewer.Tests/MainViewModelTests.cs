@@ -99,6 +99,48 @@ namespace MultiLogViewer.Tests
         }
 
         [TestMethod]
+        public void FilterText_MatchesAdditionalData()
+        {
+            // Arrange
+            _viewModel = CreateViewModel();
+            var logs = new List<LogEntry>
+            {
+                new LogEntry { Message = "Msg1", AdditionalData = new Dictionary<string, string> { { "Level", "INFO" } } },
+                new LogEntry { Message = "Msg2", AdditionalData = new Dictionary<string, string> { { "Level", "ERROR" } } }
+            };
+            SetLogsToViewModel(_viewModel, logs);
+
+            // Act
+            _viewModel.FilterText = "ERROR";
+
+            // Assert
+            var view = _viewModel.LogEntriesView.Cast<LogEntry>().ToList();
+            Assert.AreEqual(1, view.Count);
+            Assert.AreEqual("Msg2", view[0].Message);
+        }
+
+        [TestMethod]
+        public void FilterText_MatchesFileName()
+        {
+            // Arrange
+            _viewModel = CreateViewModel();
+            var logs = new List<LogEntry>
+            {
+                new LogEntry { Message = "Msg1", FileName = "App.log" },
+                new LogEntry { Message = "Msg2", FileName = "Error.log" }
+            };
+            SetLogsToViewModel(_viewModel, logs);
+
+            // Act
+            _viewModel.FilterText = "Error.log";
+
+            // Assert
+            var view = _viewModel.LogEntriesView.Cast<LogEntry>().ToList();
+            Assert.AreEqual(1, view.Count);
+            Assert.AreEqual("Msg2", view[0].Message);
+        }
+
+        [TestMethod]
         public void RefreshCommand_ReloadsLogs()
         {
             // Arrange
