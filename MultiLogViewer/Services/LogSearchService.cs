@@ -55,8 +55,8 @@ namespace MultiLogViewer.Services
 
             for (int i = 1; i <= count; i++)
             {
-                int k = forward 
-                    ? (startIndex + i) % count 
+                int k = forward
+                    ? (startIndex + i) % count
                     : (startIndex - i + count) % count;
 
                 if (IsMatch(items[k], criteria))

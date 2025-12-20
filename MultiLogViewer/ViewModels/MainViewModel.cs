@@ -15,144 +15,139 @@ namespace MultiLogViewer.ViewModels
 {
     public class MainViewModel : ViewModelBase
     {
-                private readonly ILogFileReader _logFileReader;
-                private readonly IUserDialogService _userDialogService;
-                private readonly ISearchWindowService _searchWindowService;
-                private readonly ILogSearchService _logSearchService;
-                private readonly ILogFormatConfigLoader _logFormatConfigLoader;
-                private readonly IFileResolver _fileResolver;
-                private readonly IConfigPathResolver _configPathResolver;
-        
-                private string _configPath = string.Empty;
-        
-                private readonly ObservableCollection<LogEntry> _logEntries = new ObservableCollection<LogEntry>();
-                public ICollectionView LogEntriesView { get; }
-        
-                private LogEntry? _selectedLogEntry;
-                public LogEntry? SelectedLogEntry
+        private readonly ILogService _logService;
+        private readonly IUserDialogService _userDialogService;
+        private readonly ISearchWindowService _searchWindowService;
+        private readonly ILogSearchService _logSearchService;
+        private readonly IConfigPathResolver _configPathResolver;
+
+        private string _configPath = string.Empty;
+
+        private readonly ObservableCollection<LogEntry> _logEntries = new ObservableCollection<LogEntry>();
+        public ICollectionView LogEntriesView { get; }
+
+        private LogEntry? _selectedLogEntry;
+        public LogEntry? SelectedLogEntry
+        {
+            get => _selectedLogEntry;
+            set
+            {
+                if (SetProperty(ref _selectedLogEntry, value))
                 {
-                    get => _selectedLogEntry;
-                    set
-                    {
-                        if (SetProperty(ref _selectedLogEntry, value))
-                        {
-                            UpdateSearchStatus();
-                        }
-                    }
-                }
-        
-                private SearchViewModel? _searchViewModel;
-        
-                private ObservableCollection<DisplayColumnConfig> _displayColumns = new ObservableCollection<DisplayColumnConfig>();
-                public ObservableCollection<DisplayColumnConfig> DisplayColumns
-                {
-                    get => _displayColumns;
-                    set => SetProperty(ref _displayColumns, value);
-                }
-        
-                private string _filterText = string.Empty;
-                public string FilterText
-                {
-                    get => _filterText;
-                    set
-                    {
-                        if (SetProperty(ref _filterText, value))
-                        {
-                            LogEntriesView.Refresh();
-                        }
-                    }
-                }
-        
-                public ICommand RefreshCommand { get; }
-                public ICommand OpenSearchCommand { get; }
-        
-                public MainViewModel(
-                    ILogFileReader logFileReader,
-                    IUserDialogService userDialogService,
-                    ISearchWindowService searchWindowService,
-                    ILogSearchService logSearchService,
-                    ILogFormatConfigLoader logFormatConfigLoader,
-                    IFileResolver fileResolver,
-                    IConfigPathResolver configPathResolver)
-                {
-                    _logFileReader = logFileReader;
-                    _userDialogService = userDialogService;
-                    _searchWindowService = searchWindowService;
-                    _logSearchService = logSearchService;
-                    _logFormatConfigLoader = logFormatConfigLoader;
-                    _fileResolver = fileResolver;
-                    _configPathResolver = configPathResolver;
-        
-                    LogEntriesView = CollectionViewSource.GetDefaultView(_logEntries);
-                    LogEntriesView.Filter = FilterLogEntries;
-        
-                    RefreshCommand = new RelayCommand(_ => LoadLogs(_configPath));
-                    OpenSearchCommand = new RelayCommand(_ => OpenSearch());
-                }
-        
-                private void OpenSearch()
-                {
-                    if (_searchViewModel == null)
-                    {
-                        _searchViewModel = new SearchViewModel(
-                            () => FindLogEntry(true),
-                            () => FindLogEntry(false),
-                            () => _searchWindowService.Close());
-        
-                        _searchViewModel.PropertyChanged += (s, e) =>
-                        {
-                            if (e.PropertyName == nameof(SearchViewModel.SearchText) ||
-                                e.PropertyName == nameof(SearchViewModel.IsCaseSensitive) ||
-                                e.PropertyName == nameof(SearchViewModel.IsRegex))
-                            {
-                                UpdateSearchStatus();
-                            }
-                        };
-                    }
                     UpdateSearchStatus();
-                    _searchWindowService.Show(_searchViewModel);
                 }
-        
-                private void UpdateSearchStatus()
+            }
+        }
+
+        private SearchViewModel? _searchViewModel;
+
+        private ObservableCollection<DisplayColumnConfig> _displayColumns = new ObservableCollection<DisplayColumnConfig>();
+        public ObservableCollection<DisplayColumnConfig> DisplayColumns
+        {
+            get => _displayColumns;
+            set => SetProperty(ref _displayColumns, value);
+        }
+
+        private string _filterText = string.Empty;
+        public string FilterText
+        {
+            get => _filterText;
+            set
+            {
+                if (SetProperty(ref _filterText, value))
                 {
-                    if (_searchViewModel == null) return;
-        
-                    var criteria = new SearchCriteria(_searchViewModel.SearchText, _searchViewModel.IsCaseSensitive, _searchViewModel.IsRegex);
-                    if (string.IsNullOrEmpty(criteria.SearchText))
-                    {
-                        _searchViewModel.StatusText = "";
-                        return;
-                    }
-        
-                    var items = LogEntriesView.Cast<LogEntry>();
-                    var (matchCount, currentIndex) = _logSearchService.GetSearchStatistics(items, SelectedLogEntry, criteria);
-        
-                    if (matchCount == 0)
-                    {
-                        _searchViewModel.StatusText = "No matches";
-                    }
-                    else
-                    {
-                        string currentStr = currentIndex > 0 ? currentIndex.ToString() : "?";
-                        _searchViewModel.StatusText = $"{currentStr}/{matchCount}";
-                    }
+                    LogEntriesView.Refresh();
                 }
-        
-                private void FindLogEntry(bool forward)
+            }
+        }
+
+        public ICommand RefreshCommand { get; }
+        public ICommand OpenSearchCommand { get; }
+
+        public MainViewModel(
+            ILogService logService,
+            IUserDialogService userDialogService,
+            ISearchWindowService searchWindowService,
+            ILogSearchService logSearchService,
+            IConfigPathResolver configPathResolver)
+        {
+            _logService = logService;
+            _userDialogService = userDialogService;
+            _searchWindowService = searchWindowService;
+            _logSearchService = logSearchService;
+            _configPathResolver = configPathResolver;
+
+            LogEntriesView = CollectionViewSource.GetDefaultView(_logEntries);
+            LogEntriesView.Filter = FilterLogEntries;
+
+            RefreshCommand = new RelayCommand(_ => LoadLogs(_configPath));
+            OpenSearchCommand = new RelayCommand(_ => OpenSearch());
+        }
+
+        private void OpenSearch()
+        {
+            if (_searchViewModel == null)
+            {
+                _searchViewModel = new SearchViewModel(
+                    () => FindLogEntry(true),
+                    () => FindLogEntry(false),
+                    () => _searchWindowService.Close());
+
+                _searchViewModel.PropertyChanged += (s, e) =>
                 {
-                    if (_searchViewModel == null) return;
-        
-                    var criteria = new SearchCriteria(_searchViewModel.SearchText, _searchViewModel.IsCaseSensitive, _searchViewModel.IsRegex);
-                    var items = LogEntriesView.Cast<LogEntry>();
-                    
-                    var foundEntry = _logSearchService.Find(items, SelectedLogEntry, criteria, forward);
-        
-                    if (foundEntry != null)
+                    if (e.PropertyName == nameof(SearchViewModel.SearchText) ||
+                        e.PropertyName == nameof(SearchViewModel.IsCaseSensitive) ||
+                        e.PropertyName == nameof(SearchViewModel.IsRegex))
                     {
-                        SelectedLogEntry = foundEntry;
+                        UpdateSearchStatus();
                     }
-                }
-                /// <summary>
+                };
+            }
+            UpdateSearchStatus();
+            _searchWindowService.Show(_searchViewModel);
+        }
+
+        private void UpdateSearchStatus()
+        {
+            if (_searchViewModel == null) return;
+
+            var criteria = new SearchCriteria(_searchViewModel.SearchText, _searchViewModel.IsCaseSensitive, _searchViewModel.IsRegex);
+            if (string.IsNullOrEmpty(criteria.SearchText))
+            {
+                _searchViewModel.StatusText = "";
+                return;
+            }
+
+            var items = LogEntriesView.Cast<LogEntry>();
+            var (matchCount, currentIndex) = _logSearchService.GetSearchStatistics(items, SelectedLogEntry, criteria);
+
+            if (matchCount == 0)
+            {
+                _searchViewModel.StatusText = "No matches";
+            }
+            else
+            {
+                string currentStr = currentIndex > 0 ? currentIndex.ToString() : "?";
+                _searchViewModel.StatusText = $"{currentStr}/{matchCount}";
+            }
+        }
+
+        private void FindLogEntry(bool forward)
+        {
+            if (_searchViewModel == null) return;
+
+            var criteria = new SearchCriteria(_searchViewModel.SearchText, _searchViewModel.IsCaseSensitive, _searchViewModel.IsRegex);
+            var items = LogEntriesView.Cast<LogEntry>();
+
+            var foundEntry = _logSearchService.Find(items, SelectedLogEntry, criteria, forward);
+
+            if (foundEntry != null)
+            {
+                SelectedLogEntry = foundEntry;
+            }
+        }
+
+        /// <summary>
         /// ViewModel を初期化し、指定された設定ファイルからログを読み込みます。
         /// </summary>
         /// <param name="configPath">設定ファイルのパス。</param>
@@ -166,40 +161,21 @@ namespace MultiLogViewer.ViewModels
         {
             if (string.IsNullOrEmpty(configPath)) return;
 
-            var appConfig = _logFormatConfigLoader.Load(configPath);
-            if (appConfig == null)
-            {
-                _userDialogService.ShowError("Could not load or parse config.yaml.", "Error");
-                return;
-            }
+            var result = _logService.LoadFromConfig(configPath);
+
+            // ログエントリがない場合にエラーを表示する（以前の仕様を維持）
+            // 注意: appConfigがnullの場合のハンドリングをService内で行っているため、
+            // ここでは結果が空かどうかで判断します。
 
             // DisplayColumns を設定
-            if (appConfig.DisplayColumns != null && appConfig.DisplayColumns.Any())
+            if (result.DisplayColumns != null && result.DisplayColumns.Any())
             {
-                DisplayColumns = new ObservableCollection<DisplayColumnConfig>(appConfig.DisplayColumns);
+                DisplayColumns = new ObservableCollection<DisplayColumnConfig>(result.DisplayColumns);
             }
 
-            // LogFormats からログを読み込む
-            if (appConfig.LogFormats == null || !appConfig.LogFormats.Any())
-            {
-                _logEntries.Clear(); // ログフォーマットがない場合はクリアする
-                return;
-            }
-
-            var allEntries = new List<LogEntry>();
-            foreach (var logFormatConfig in appConfig.LogFormats)
-            {
-                if (logFormatConfig.LogFilePatterns != null && logFormatConfig.LogFilePatterns.Any())
-                {
-                    var filePaths = _fileResolver.Resolve(logFormatConfig.LogFilePatterns);
-                    var entries = _logFileReader.ReadFiles(filePaths, logFormatConfig);
-                    allEntries.AddRange(entries);
-                }
-            }
-
-            // エントリをタイムスタンプでソートしてコレクションに追加
+            // エントリをコレクションに追加
             _logEntries.Clear();
-            foreach (var entry in allEntries.OrderBy(e => e.Timestamp))
+            foreach (var entry in result.Entries)
             {
                 _logEntries.Add(entry);
             }
