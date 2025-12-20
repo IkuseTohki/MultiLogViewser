@@ -23,9 +23,33 @@ namespace MultiLogViewer.ViewModels
         private readonly IConfigPathResolver _configPathResolver;
 
         private string _configPath = string.Empty;
+        private List<FileState> _fileStates = new List<FileState>();
+        private int _pollingIntervalMs = 1000;
+        private readonly System.Windows.Threading.DispatcherTimer _tailTimer;
 
         private readonly ObservableCollection<LogEntry> _logEntries = new ObservableCollection<LogEntry>();
         public ICollectionView LogEntriesView { get; }
+
+        private bool _isTailEnabled;
+        public bool IsTailEnabled
+        {
+            get => _isTailEnabled;
+            set
+            {
+                if (SetProperty(ref _isTailEnabled, value))
+                {
+                    if (value) _tailTimer.Start();
+                    else _tailTimer.Stop();
+                }
+            }
+        }
+
+        private bool _isAtBottom = true;
+        public bool IsAtBottom
+        {
+            get => _isAtBottom;
+            set => SetProperty(ref _isAtBottom, value);
+        }
 
         private LogEntry? _selectedLogEntry;
         public LogEntry? SelectedLogEntry
@@ -83,6 +107,7 @@ namespace MultiLogViewer.ViewModels
         public ICommand AddExtensionFilterCommand { get; }
         public ICommand AddDateTimeFilterCommand { get; }
         public ICommand RemoveExtensionFilterCommand { get; }
+        public ICommand ToggleTailCommand { get; }
 
         private ObservableCollection<LogFilter> _activeExtensionFilters = new ObservableCollection<LogFilter>();
         public ObservableCollection<LogFilter> ActiveExtensionFilters => _activeExtensionFilters;
@@ -115,8 +140,35 @@ namespace MultiLogViewer.ViewModels
             AddExtensionFilterCommand = new RelayCommand(param => AddExtensionFilter(param as string));
             AddDateTimeFilterCommand = new RelayCommand(param => AddDateTimeFilter(param));
             RemoveExtensionFilterCommand = new RelayCommand(param => RemoveExtensionFilter(param as LogFilter));
+            ToggleTailCommand = new RelayCommand(_ => IsTailEnabled = !IsTailEnabled);
 
             _activeExtensionFilters.CollectionChanged += (s, e) => LogEntriesView.Refresh();
+
+            _tailTimer = new System.Windows.Threading.DispatcherTimer();
+            _tailTimer.Tick += TailTimer_Tick;
+        }
+
+        private void TailTimer_Tick(object? sender, EventArgs e)
+        {
+            if (string.IsNullOrEmpty(_configPath)) return;
+
+            var result = _logService.LoadIncremental(_configPath, _fileStates);
+            _fileStates = result.FileStates;
+
+            if (result.Entries.Any())
+            {
+                // 新しいエントリを追加
+                foreach (var entry in result.Entries)
+                {
+                    _logEntries.Add(entry);
+                }
+
+                // 自動スクロール処理（Viewとの連携が必要なため、プロパティで通知するかBehaviorで対応）
+                if (IsAtBottom)
+                {
+                    SelectedLogEntry = _logEntries.LastOrDefault();
+                }
+            }
         }
 
         private void AddExtensionFilter(string? key)
@@ -298,6 +350,10 @@ namespace MultiLogViewer.ViewModels
             if (string.IsNullOrEmpty(configPath)) return;
 
             var result = _logService.LoadFromConfig(configPath);
+
+            _fileStates = result.FileStates;
+            _pollingIntervalMs = result.PollingIntervalMs;
+            _tailTimer.Interval = TimeSpan.FromMilliseconds(_pollingIntervalMs);
 
             // ログエントリがない場合にエラーを表示する（以前の仕様を維持）
             // 注意: appConfigがnullの場合のハンドリングをService内で行っているため、

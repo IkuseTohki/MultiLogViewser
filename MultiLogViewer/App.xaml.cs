@@ -51,17 +51,43 @@ namespace MultiLogViewer
         {
             base.OnStartup(e);
 
-            // .NET Core/.NET 5+ で Shift-JIS などのコードページエンコーディングをサポートするために登録
-            System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+            try
+            {
+                // .NET Core/.NET 5+ で Shift-JIS などのコードページエンコーディングをサポートするために登録
+                System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
 
-            var configPathResolver = _serviceProvider.GetRequiredService<IConfigPathResolver>();
-            var configPath = configPathResolver.ResolvePath(e.Args);
+                var configPathResolver = _serviceProvider.GetRequiredService<IConfigPathResolver>();
+                var configPath = configPathResolver.ResolvePath(e.Args);
 
-            var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
-            var mainViewModel = _serviceProvider.GetRequiredService<MainViewModel>();
-            mainViewModel.Initialize(configPath); // 新しい初期化メソッドを呼び出す
-            mainWindow.DataContext = mainViewModel;
-            mainWindow.Show();
+                var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
+                var mainViewModel = _serviceProvider.GetRequiredService<MainViewModel>();
+                mainViewModel.Initialize(configPath); // 新しい初期化メソッドを呼び出す
+                mainWindow.DataContext = mainViewModel;
+                mainWindow.Show();
+            }
+            catch (System.Exception ex)
+            {
+                ShowErrorWindow(ex);
+                Shutdown();
+            }
+        }
+
+        private void Application_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+        {
+            ShowErrorWindow(e.Exception);
+            e.Handled = true;
+        }
+
+        private void ShowErrorWindow(System.Exception ex)
+        {
+            var errorMessage = $"Message: {ex.Message}\n\nStack Trace:\n{ex.StackTrace}";
+            if (ex.InnerException != null)
+            {
+                errorMessage += $"\n\nInner Exception:\n{ex.InnerException.Message}\n{ex.InnerException.StackTrace}";
+            }
+
+            var errorWindow = new ErrorWindow(errorMessage);
+            errorWindow.ShowDialog();
         }
     }
 }

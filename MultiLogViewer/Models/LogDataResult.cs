@@ -9,11 +9,15 @@ namespace MultiLogViewer.Models
     {
         public List<LogEntry> Entries { get; }
         public List<DisplayColumnConfig> DisplayColumns { get; }
+        public List<FileState> FileStates { get; }
+        public int PollingIntervalMs { get; }
 
-        public LogDataResult(List<LogEntry> entries, List<DisplayColumnConfig> displayColumns)
+        public LogDataResult(List<LogEntry> entries, List<DisplayColumnConfig> displayColumns, List<FileState> fileStates, int pollingIntervalMs = 1000)
         {
             Entries = entries;
             DisplayColumns = displayColumns;
+            FileStates = fileStates;
+            PollingIntervalMs = pollingIntervalMs;
         }
     }
 }

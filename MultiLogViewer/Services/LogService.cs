@@ -25,10 +25,12 @@ namespace MultiLogViewer.Services
             var appConfig = _logFormatConfigLoader.Load(configPath);
             if (appConfig == null)
             {
-                return new LogDataResult(new List<LogEntry>(), new List<DisplayColumnConfig>());
+                return new LogDataResult(new List<LogEntry>(), new List<DisplayColumnConfig>(), new List<FileState>());
             }
 
             var allEntries = new List<LogEntry>();
+            var fileStates = new List<FileState>();
+
             if (appConfig.LogFormats != null)
             {
                 foreach (var logFormatConfig in appConfig.LogFormats)
@@ -36,8 +38,12 @@ namespace MultiLogViewer.Services
                     if (logFormatConfig.LogFilePatterns != null && logFormatConfig.LogFilePatterns.Any())
                     {
                         var filePaths = _fileResolver.Resolve(logFormatConfig.LogFilePatterns);
-                        var entries = _logFileReader.ReadFiles(filePaths, logFormatConfig);
-                        allEntries.AddRange(entries);
+                        foreach (var path in filePaths)
+                        {
+                            var (entries, state) = _logFileReader.ReadIncremental(new FileState(path, 0, 0), logFormatConfig);
+                            allEntries.AddRange(entries);
+                            fileStates.Add(state);
+                        }
                     }
                 }
             }
@@ -45,7 +51,47 @@ namespace MultiLogViewer.Services
             var sortedEntries = allEntries.OrderBy(e => e.Timestamp).ToList();
             var displayColumns = appConfig.DisplayColumns?.ToList() ?? new List<DisplayColumnConfig>();
 
-            return new LogDataResult(sortedEntries, displayColumns);
+            return new LogDataResult(sortedEntries, displayColumns, fileStates, appConfig.PollingIntervalMs);
+        }
+
+        public LogDataResult LoadIncremental(string configPath, List<FileState> currentStates)
+        {
+            var appConfig = _logFormatConfigLoader.Load(configPath);
+            if (appConfig == null || appConfig.LogFormats == null)
+            {
+                return new LogDataResult(new List<LogEntry>(), new List<DisplayColumnConfig>(), currentStates);
+            }
+
+            var newEntries = new List<LogEntry>();
+            var updatedStates = new List<FileState>();
+
+            // 各設定フォーマットに対して、対象ファイルを特定
+            foreach (var logFormatConfig in appConfig.LogFormats)
+            {
+                if (logFormatConfig.LogFilePatterns == null || !logFormatConfig.LogFilePatterns.Any()) continue;
+
+                var filePaths = _fileResolver.Resolve(logFormatConfig.LogFilePatterns);
+                foreach (var path in filePaths)
+                {
+                    // 現在の状態を見つける
+                    var currentState = currentStates.FirstOrDefault(s => s.FilePath == path) ?? new FileState(path, 0, 0);
+
+                    var (entries, state) = _logFileReader.ReadIncremental(currentState, logFormatConfig);
+                    newEntries.AddRange(entries);
+                    updatedStates.Add(state);
+                }
+            }
+
+            // まだ処理していない（設定から消えた？）状態も引き継ぐ（オプション）
+            foreach (var oldState in currentStates)
+            {
+                if (!updatedStates.Any(s => s.FilePath == oldState.FilePath))
+                {
+                    updatedStates.Add(oldState);
+                }
+            }
+
+            return new LogDataResult(newEntries, new List<DisplayColumnConfig>(), updatedStates, appConfig.PollingIntervalMs);
         }
     }
 }

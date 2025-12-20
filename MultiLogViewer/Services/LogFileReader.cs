@@ -14,37 +14,68 @@ namespace MultiLogViewer.Services
 
         public IEnumerable<LogEntry> Read(string filePath, LogFormatConfig config)
         {
+            var (entries, _) = ReadInternal(filePath, 0, 0, config);
+            return entries;
+        }
+
+        public (IEnumerable<LogEntry> Entries, FileState UpdatedState) ReadIncremental(FileState currentState, LogFormatConfig config)
+        {
+            if (!File.Exists(currentState.FilePath))
+            {
+                return (Enumerable.Empty<LogEntry>(), currentState);
+            }
+
+            var fileInfo = new FileInfo(currentState.FilePath);
+            if (fileInfo.Length < currentState.LastPosition)
+            {
+                // ファイルが小さくなった（ローテーション等）場合は最初から読み直す
+                var (entries, newState) = ReadInternal(currentState.FilePath, 0, 0, config);
+                return (entries, newState);
+            }
+
+            if (fileInfo.Length == currentState.LastPosition)
+            {
+                return (Enumerable.Empty<LogEntry>(), currentState);
+            }
+
+            var (newEntries, updatedState) = ReadInternal(currentState.FilePath, currentState.LastPosition, currentState.LastLineNumber, config);
+            return (newEntries, updatedState);
+        }
+
+        private (IEnumerable<LogEntry> Entries, FileState State) ReadInternal(string filePath, long startPosition, int startLineNumber, LogFormatConfig config)
+        {
             if (!File.Exists(filePath))
             {
-                yield break;
+                return (Enumerable.Empty<LogEntry>(), new FileState(filePath, 0, 0));
             }
 
             var parser = new LogParser(config);
+            var results = new List<LogEntry>();
+            long endPosition = startPosition;
+            int currentLineNumber = startLineNumber;
 
-            using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+            using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
             {
                 // エンコーディングを自動判別
                 System.Text.Encoding encoding = DetectFileEncoding(fs);
-                fs.Seek(0, SeekOrigin.Begin); // ストリームを先頭に戻す
+                fs.Seek(startPosition, SeekOrigin.Begin);
 
                 using (var streamReader = new StreamReader(fs, encoding))
                 {
                     string? line;
-                    int lineNumber = 0;
                     string fileName = Path.GetFileName(filePath);
                     LogEntry? currentEntry = null;
 
                     while ((line = streamReader.ReadLine()) != null)
                     {
-                        lineNumber++;
-                        var entry = parser.Parse(line, fileName, lineNumber);
+                        currentLineNumber++;
+                        var entry = parser.Parse(line, fileName, currentLineNumber);
 
                         if (entry != null)
                         {
-                            // 新しいログエントリの開始
                             if (currentEntry != null)
                             {
-                                yield return currentEntry;
+                                results.Add(currentEntry);
                             }
                             entry.RawLine = line;
                             entry.FileFullPath = filePath;
@@ -52,7 +83,6 @@ namespace MultiLogViewer.Services
                         }
                         else if (currentEntry != null && config.IsMultiline)
                         {
-                            // 既存のエントリへの継続行
                             currentEntry.Message += System.Environment.NewLine + line;
                             currentEntry.RawLine += System.Environment.NewLine + line;
                         }
@@ -60,10 +90,17 @@ namespace MultiLogViewer.Services
 
                     if (currentEntry != null)
                     {
-                        yield return currentEntry;
+                        results.Add(currentEntry);
                     }
+
+                    // 読み込み終わった時点のストリームの絶対位置を取得する
+                    // 注意: StreamReaderがバッファリングしているため、fs.Positionではなく工夫が必要
+                    // 簡易的にfs.Lengthを使うか、自前でバイト数を計算するが、ここではfs.Lengthを最終位置とする
+                    endPosition = fs.Length;
                 }
             }
+
+            return (results, new FileState(filePath, endPosition, currentLineNumber));
         }
 
         /// <summary>

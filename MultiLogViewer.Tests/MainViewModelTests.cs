@@ -146,7 +146,8 @@ namespace MultiLogViewer.Tests
             // Arrange
             var result = new LogDataResult(
                 new List<LogEntry> { new LogEntry { Message = "Entry 1" } },
-                new List<DisplayColumnConfig> { new DisplayColumnConfig { Header = "Timestamp" } }
+                new List<DisplayColumnConfig> { new DisplayColumnConfig { Header = "Timestamp" } },
+                new List<FileState>()
             );
 
             _mockLogService.Setup(s => s.LoadFromConfig(It.IsAny<string>())).Returns(result);
@@ -167,7 +168,7 @@ namespace MultiLogViewer.Tests
         public void Initialize_ConfigLoadFails_DoesNotThrow()
         {
             // Arrange
-            _mockLogService.Setup(s => s.LoadFromConfig(It.IsAny<string>())).Returns(new LogDataResult(new List<LogEntry>(), new List<DisplayColumnConfig>()));
+            _mockLogService.Setup(s => s.LoadFromConfig(It.IsAny<string>())).Returns(new LogDataResult(new List<LogEntry>(), new List<DisplayColumnConfig>(), new List<FileState>()));
 
             // Act
             _viewModel = CreateViewModel();
@@ -246,7 +247,7 @@ namespace MultiLogViewer.Tests
         {
             // Arrange
             _mockLogService.Setup(s => s.LoadFromConfig(It.IsAny<string>()))
-                .Returns(new LogDataResult(new List<LogEntry>(), new List<DisplayColumnConfig>()));
+                .Returns(new LogDataResult(new List<LogEntry>(), new List<DisplayColumnConfig>(), new List<FileState>()));
 
             _viewModel = CreateViewModel();
             _viewModel.Initialize("config.yaml");
@@ -497,7 +498,7 @@ namespace MultiLogViewer.Tests
 
         private void SetLogsToViewModel(MainViewModel vm, List<LogEntry> logs)
         {
-            var result = new LogDataResult(logs, new List<DisplayColumnConfig>());
+            var result = new LogDataResult(logs, new List<DisplayColumnConfig>(), new List<FileState>());
             _mockLogService.Setup(s => s.LoadFromConfig(It.IsAny<string>())).Returns(result);
 
             vm.Initialize("dummy");

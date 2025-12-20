@@ -32,6 +32,12 @@
     <!-- Resize Handle (Two vertical bars) -->
     <Geometry x:Key="ResizeHandleIconGeometry">M8,5H10V19H8V5M14,5H16V19H14V5Z</Geometry>
 
+    <!-- Wolf Tail Active (Flame-like, smooth right, jagged left) -->
+    <Geometry x:Key="WolfTailActiveIconGeometry">M11,21 C16,19 20,13 17,2 C15,5 14,6 12,6 L13,9 C10,9 8,10 6,11 L8,14 C5,15 4,16 3,18 L6,19 C7,20 9,21 11,21 Z</Geometry>
+
+    <!-- Wolf Tail Inactive (Drooping, smooth right, jagged left) -->
+    <Geometry x:Key="WolfTailInactiveIconGeometry">M13,3 C18,8 18,16 14,21 C14,18 13,17 11,17 L12,14 C9,14 8,13 6,12 L8,9 C6,8 5,7 5,5 L8,4 C9,3 10,3 13,3 Z</Geometry>
+
     <!-- Plus -->
     <Geometry x:Key="PlusIconGeometry">M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z</Geometry>
 
