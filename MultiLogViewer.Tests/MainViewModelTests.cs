@@ -16,6 +16,7 @@ namespace MultiLogViewer.Tests
         private Mock<IUserDialogService> _mockUserDialogService = null!;
         private Mock<ISearchWindowService> _mockSearchWindowService = null!;
         private ILogSearchService _logSearchService = null!;
+        private Mock<IClipboardService> _mockClipboardService = null!; // 追加
         private Mock<IConfigPathResolver> _mockConfigPathResolver = null!;
         private MainViewModel _viewModel = null!;
 
@@ -26,6 +27,7 @@ namespace MultiLogViewer.Tests
             _mockUserDialogService = new Mock<IUserDialogService>();
             _mockSearchWindowService = new Mock<ISearchWindowService>();
             _logSearchService = new LogSearchService();
+            _mockClipboardService = new Mock<IClipboardService>(); // 追加
             _mockConfigPathResolver = new Mock<IConfigPathResolver>();
         }
 
@@ -36,7 +38,42 @@ namespace MultiLogViewer.Tests
                 _mockUserDialogService.Object,
                 _mockSearchWindowService.Object,
                 _logSearchService,
+                _mockClipboardService.Object, // 追加
                 _mockConfigPathResolver.Object);
+        }
+
+        [TestMethod]
+        public void CopyCommand_CopiesSelectedEntryToClipboard()
+        {
+            // Arrange
+            _viewModel = CreateViewModel();
+            var logs = new List<LogEntry>
+            {
+                new LogEntry
+                {
+                    Message = "Test Message",
+                    Timestamp = new System.DateTime(2023, 1, 1, 12, 0, 0),
+                    AdditionalData = new Dictionary<string, string> { { "Level", "INFO" } }
+                }
+            };
+
+            // Set up Display Columns
+            _viewModel.DisplayColumns = new ObservableCollection<DisplayColumnConfig>
+            {
+                new DisplayColumnConfig { Header = "Time", BindingPath = "Timestamp", StringFormat = "yyyy-MM-dd HH:mm:ss" },
+                new DisplayColumnConfig { Header = "Lvl", BindingPath = "AdditionalData[Level]" },
+                new DisplayColumnConfig { Header = "Msg", BindingPath = "Message" }
+            };
+
+            SetLogsToViewModel(_viewModel, logs);
+            _viewModel.SelectedLogEntry = logs[0];
+
+            // Act
+            _viewModel.CopyCommand.Execute(null);
+
+            // Assert
+            var expectedText = "2023-01-01 12:00:00\tINFO\tTest Message";
+            _mockClipboardService.Verify(c => c.SetText(expectedText), Times.Once);
         }
 
         [TestMethod]

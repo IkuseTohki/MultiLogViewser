@@ -19,6 +19,7 @@ namespace MultiLogViewer.ViewModels
         private readonly IUserDialogService _userDialogService;
         private readonly ISearchWindowService _searchWindowService;
         private readonly ILogSearchService _logSearchService;
+        private readonly IClipboardService _clipboardService;
         private readonly IConfigPathResolver _configPathResolver;
 
         private string _configPath = string.Empty;
@@ -63,18 +64,21 @@ namespace MultiLogViewer.ViewModels
 
         public ICommand RefreshCommand { get; }
         public ICommand OpenSearchCommand { get; }
+        public ICommand CopyCommand { get; }
 
         public MainViewModel(
             ILogService logService,
             IUserDialogService userDialogService,
             ISearchWindowService searchWindowService,
             ILogSearchService logSearchService,
+            IClipboardService clipboardService,
             IConfigPathResolver configPathResolver)
         {
             _logService = logService;
             _userDialogService = userDialogService;
             _searchWindowService = searchWindowService;
             _logSearchService = logSearchService;
+            _clipboardService = clipboardService;
             _configPathResolver = configPathResolver;
 
             LogEntriesView = CollectionViewSource.GetDefaultView(_logEntries);
@@ -82,6 +86,62 @@ namespace MultiLogViewer.ViewModels
 
             RefreshCommand = new RelayCommand(_ => LoadLogs(_configPath));
             OpenSearchCommand = new RelayCommand(_ => OpenSearch());
+            CopyCommand = new RelayCommand(_ => CopySelectedLogEntry());
+        }
+
+        private void CopySelectedLogEntry()
+        {
+            if (SelectedLogEntry == null) return;
+
+            var values = new List<string>();
+            foreach (var column in DisplayColumns)
+            {
+                values.Add(GetColumnValue(SelectedLogEntry, column.BindingPath, column.StringFormat));
+            }
+
+            var textToCopy = string.Join("\t", values);
+            _clipboardService.SetText(textToCopy);
+        }
+
+        private string GetColumnValue(LogEntry entry, string bindingPath, string? format)
+        {
+            if (string.IsNullOrEmpty(bindingPath)) return string.Empty;
+
+            object? rawValue = null;
+
+            if (bindingPath == "Timestamp")
+            {
+                rawValue = entry.Timestamp;
+            }
+            else if (bindingPath == "Message")
+            {
+                rawValue = entry.Message;
+            }
+            else if (bindingPath == "FileName")
+            {
+                rawValue = entry.FileName;
+            }
+            else if (bindingPath == "LineNumber")
+            {
+                rawValue = entry.LineNumber;
+            }
+            else if (bindingPath.StartsWith("AdditionalData[") && bindingPath.EndsWith("]"))
+            {
+                var key = bindingPath.Substring(15, bindingPath.Length - 16);
+                if (entry.AdditionalData.TryGetValue(key, out var val))
+                {
+                    rawValue = val;
+                }
+            }
+
+            if (rawValue == null) return string.Empty;
+
+            if (!string.IsNullOrEmpty(format))
+            {
+                return string.Format(System.Globalization.CultureInfo.InvariantCulture, $"{{0:{format}}}", rawValue);
+            }
+
+            return rawValue.ToString() ?? string.Empty;
         }
 
         private void OpenSearch()

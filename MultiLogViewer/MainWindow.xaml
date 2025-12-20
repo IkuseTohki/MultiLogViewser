@@ -12,6 +12,7 @@
 
         <DockPanel.InputBindings>
             <KeyBinding Key="F" Modifiers="Control" Command="{Binding OpenSearchCommand}"/>
+            <KeyBinding Key="C" Modifiers="Control" Command="{Binding CopyCommand}"/>
         </DockPanel.InputBindings>
 
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="5">

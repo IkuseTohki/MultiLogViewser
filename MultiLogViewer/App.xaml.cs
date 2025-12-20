@@ -28,16 +28,18 @@ namespace MultiLogViewer
             services.AddSingleton<ISearchWindowService, SearchWindowService>();
             services.AddSingleton<ILogSearchService, LogSearchService>();
             services.AddSingleton<ILogFormatConfigLoader, LogFormatConfigLoader>();
-            services.AddSingleton<ILogService, LogService>(); // 追加
+            services.AddSingleton<ILogService, LogService>();
+            services.AddSingleton<IClipboardService, WpfClipboardService>();
             services.AddSingleton<IConfigPathResolver, ConfigPathResolver>();
 
             // ViewModels
             services.AddTransient(provider =>
                 new MainViewModel(
-                    provider.GetRequiredService<ILogService>(), // 集約されたサービス
+                    provider.GetRequiredService<ILogService>(),
                     provider.GetRequiredService<IUserDialogService>(),
                     provider.GetRequiredService<ISearchWindowService>(),
                     provider.GetRequiredService<ILogSearchService>(),
+                    provider.GetRequiredService<IClipboardService>(),
                     provider.GetRequiredService<IConfigPathResolver>()));
 
 
