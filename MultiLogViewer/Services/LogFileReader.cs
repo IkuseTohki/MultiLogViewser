@@ -29,20 +29,38 @@ namespace MultiLogViewer.Services
 
                 using (var streamReader = new StreamReader(fs, encoding))
                 {
-                    string line;
-                    int lineNumber = 0; // 行番号をカウントする変数を導入
-                    string fileName = Path.GetFileName(filePath); // ファイル名を事前に取得
+                    string? line;
+                    int lineNumber = 0;
+                    string fileName = Path.GetFileName(filePath);
+                    LogEntry? currentEntry = null;
 
                     while ((line = streamReader.ReadLine()) != null)
                     {
                         lineNumber++;
-                        var entry = parser.Parse(line, fileName, lineNumber); // ファイル名と行番号を渡す
+                        var entry = parser.Parse(line, fileName, lineNumber);
+
                         if (entry != null)
                         {
-                            entry.RawLine = line; // パース前の行を保持
-                            entry.FileFullPath = filePath; // フルパスを設定
-                            yield return entry;
+                            // 新しいログエントリの開始
+                            if (currentEntry != null)
+                            {
+                                yield return currentEntry;
+                            }
+                            entry.RawLine = line;
+                            entry.FileFullPath = filePath;
+                            currentEntry = entry;
                         }
+                        else if (currentEntry != null && config.IsMultiline)
+                        {
+                            // 既存のエントリへの継続行
+                            currentEntry.Message += System.Environment.NewLine + line;
+                            currentEntry.RawLine += System.Environment.NewLine + line;
+                        }
+                    }
+
+                    if (currentEntry != null)
+                    {
+                        yield return currentEntry;
                     }
                 }
             }

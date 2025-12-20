@@ -61,26 +61,58 @@ namespace MultiLogViewer.Behaviors
 
             foreach (var columnConfig in columns)
             {
-                var binding = new Binding(columnConfig.BindingPath)
-                {
-                    Mode = BindingMode.OneWay
-                };
+                DataGridColumn newColumn;
 
-                if (!string.IsNullOrEmpty(columnConfig.StringFormat))
+                if (columnConfig.BindingPath == "Message")
                 {
-                    binding.StringFormat = columnConfig.StringFormat;
+                    // Message列の場合はテンプレートを使用（1行表示 + アイコン）
+                    // 検索範囲をDataGrid自身に広げることで、Windowのリソースも見つけられるようにする
+                    var template = dataGrid.TryFindResource("MultilineMessageTemplate") as DataTemplate;
+                    if (template != null)
+                    {
+                        newColumn = new DataGridTemplateColumn
+                        {
+                            Header = columnConfig.Header,
+                            Width = new DataGridLength(columnConfig.Width),
+                            MinWidth = columnConfig.Width,
+                            CellTemplate = template,
+                            SortMemberPath = columnConfig.BindingPath
+                        };
+                    }
+                    else
+                    {
+                        newColumn = CreateTextColumn(columnConfig);
+                    }
+                }
+                else
+                {
+                    newColumn = CreateTextColumn(columnConfig);
                 }
 
-                var newColumn = new DataGridTextColumn
-                {
-                    Header = columnConfig.Header,
-                    Width = new DataGridLength(columnConfig.Width), // config.yaml の幅を初期値として設定
-                    MinWidth = columnConfig.Width, // 最小幅も初期値と同じに設定
-                    Binding = binding,
-                    SortMemberPath = columnConfig.BindingPath
-                };
                 dataGrid.Columns.Add(newColumn);
             }
+        }
+
+        private static DataGridTextColumn CreateTextColumn(DisplayColumnConfig columnConfig)
+        {
+            var binding = new Binding(columnConfig.BindingPath)
+            {
+                Mode = BindingMode.OneWay
+            };
+
+            if (!string.IsNullOrEmpty(columnConfig.StringFormat))
+            {
+                binding.StringFormat = columnConfig.StringFormat;
+            }
+
+            return new DataGridTextColumn
+            {
+                Header = columnConfig.Header,
+                Width = new DataGridLength(columnConfig.Width),
+                MinWidth = columnConfig.Width,
+                Binding = binding,
+                SortMemberPath = columnConfig.BindingPath
+            };
         }
     }
 }

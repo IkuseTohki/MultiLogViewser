@@ -1,0 +1,5 @@
+2023-01-01 10:00:00 [INFO] Line 1
+2023-01-01 10:00:01 [ERROR] Multi-line start
+  at StackTrace.Line1
+  at StackTrace.Line2
+2023-01-01 10:00:02 [INFO] Line 3

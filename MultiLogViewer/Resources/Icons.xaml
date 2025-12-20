@@ -32,4 +32,7 @@
     <!-- Resize Handle (Two vertical bars) -->
     <Geometry x:Key="ResizeHandleIconGeometry">M8,5H10V19H8V5M14,5H16V19H14V5Z</Geometry>
 
+    <!-- Multiline Icon (3 lines) -->
+    <Geometry x:Key="MultilineIconGeometry">M3,7H21V9H3V7M3,11H21V13H3V11M3,15H21V17H3V15Z</Geometry>
+
 </ResourceDictionary>

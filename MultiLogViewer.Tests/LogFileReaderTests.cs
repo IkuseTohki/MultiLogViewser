@@ -12,12 +12,15 @@ namespace MultiLogViewer.Tests
     public class LogFileReaderTests
     {
         private string _tempDirectory = "";
+        private LogFileReader _reader = null!;
+        private string _testLogsDir = "TestLogs";
 
         [TestInitialize]
         public void Setup()
         {
             _tempDirectory = Path.Combine(Path.GetTempPath(), "MLV_Tests_" + Path.GetRandomFileName());
             Directory.CreateDirectory(_tempDirectory);
+            _reader = new LogFileReader();
         }
 
         [TestCleanup]
@@ -40,7 +43,8 @@ namespace MultiLogViewer.Tests
             {
                 Name = "ApplicationLog",
                 Pattern = @"^(?<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[(?<level>\w+)\] (?<message>.*)$",
-                TimestampFormat = "yyyy-MM-dd HH:mm:ss"
+                TimestampFormat = "yyyy-MM-dd HH:mm:ss",
+                IsMultiline = false // Disable multiline to skip invalid lines
             };
             var logLines = new[]
             {
@@ -172,6 +176,47 @@ namespace MultiLogViewer.Tests
             Assert.IsNotNull(logEntries);
             Assert.AreEqual(1, logEntries.Count);
             Assert.AreEqual("テストログファイル(UTF-8)", logEntries.First().Message);
+        }
+
+        [TestMethod]
+        public void Read_MultilineLog_CombinedCorrectly()
+        {
+            // Arrange
+            var logPath = Path.Combine(_testLogsDir, "test_multiline.log");
+            var config = new LogFormatConfig
+            {
+                Name = "TestFormat",
+                Pattern = @"^(?<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[(?<level>\w+)\] (?<message>.*)$",
+                TimestampFormat = "yyyy-MM-dd HH:mm:ss",
+                IsMultiline = true
+            };
+
+            // Act
+            var logEntries = _reader.Read(logPath, config).ToList();
+
+            // Assert
+            Assert.AreEqual(3, logEntries.Count, "Should have 3 log entries.");
+
+            // Entry 1
+            Assert.AreEqual("Line 1", logEntries[0].Message);
+
+            // Entry 2 (Multiline)
+            var expectedMessage = "Multi-line start" + System.Environment.NewLine + "  at StackTrace.Line1" + System.Environment.NewLine + "  at StackTrace.Line2";
+            Assert.AreEqual(expectedMessage, logEntries[1].Message);
+            Assert.AreEqual("ERROR", logEntries[1].AdditionalData["level"]);
+
+            // Entry 3
+            Assert.AreEqual("Line 3", logEntries[2].Message);
+        }
+
+        [TestMethod]
+        public void ReadFiles_EmptyList_ReturnsEmpty()
+        {
+            // Act
+            var logEntries = _reader.ReadFiles(new List<string>(), new LogFormatConfig()).ToList();
+
+            // Assert
+            Assert.AreEqual(0, logEntries.Count);
         }
     }
 }
