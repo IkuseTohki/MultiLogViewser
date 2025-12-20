@@ -14,7 +14,8 @@ namespace MultiLogViewer.Tests
     {
         private Mock<ILogFileReader> _mockLogFileReader = null!;
         private Mock<IUserDialogService> _mockUserDialogService = null!;
-        private Mock<ISearchWindowService> _mockSearchWindowService = null!;
+        private Mock<ISearchWindowService> _mockSearchWindowService = null!; // 追加
+        private ILogSearchService _logSearchService = null!;
         private Mock<ILogFormatConfigLoader> _mockLogFormatConfigLoader = null!;
         private Mock<IFileResolver> _mockFileResolver = null!;
         private Mock<IConfigPathResolver> _mockConfigPathResolver = null!;
@@ -26,6 +27,7 @@ namespace MultiLogViewer.Tests
             _mockLogFileReader = new Mock<ILogFileReader>();
             _mockUserDialogService = new Mock<IUserDialogService>();
             _mockSearchWindowService = new Mock<ISearchWindowService>();
+            _logSearchService = new LogSearchService(); // 実体を使用
             _mockLogFormatConfigLoader = new Mock<ILogFormatConfigLoader>();
             _mockFileResolver = new Mock<IFileResolver>();
             _mockConfigPathResolver = new Mock<IConfigPathResolver>();
@@ -37,6 +39,7 @@ namespace MultiLogViewer.Tests
                 _mockLogFileReader.Object,
                 _mockUserDialogService.Object,
                 _mockSearchWindowService.Object,
+                _logSearchService, // 実体を渡す
                 _mockLogFormatConfigLoader.Object,
                 _mockFileResolver.Object,
                 _mockConfigPathResolver.Object);
@@ -200,6 +203,7 @@ namespace MultiLogViewer.Tests
                     realLogFileReader, // 実インスタンスを使用
                     _mockUserDialogService.Object,
                     _mockSearchWindowService.Object,
+                    _logSearchService,
                     _mockLogFormatConfigLoader.Object,
                     _mockFileResolver.Object,
                     _mockConfigPathResolver.Object);
@@ -291,7 +295,7 @@ namespace MultiLogViewer.Tests
                 _mockFileResolver.Setup(r => r.Resolve(It.IsAny<List<string>>())).Returns(new List<string> { tempLogFileName });
                 var realLogFileReader = new LogFileReader();
 
-                _viewModel = new MainViewModel(realLogFileReader, _mockUserDialogService.Object, _mockSearchWindowService.Object, _mockLogFormatConfigLoader.Object, _mockFileResolver.Object, _mockConfigPathResolver.Object);
+                _viewModel = new MainViewModel(realLogFileReader, _mockUserDialogService.Object, _mockSearchWindowService.Object, _logSearchService, _mockLogFormatConfigLoader.Object, _mockFileResolver.Object, _mockConfigPathResolver.Object);
 
                 // Act (1): 初期読み込み
                 _viewModel.Initialize("dummy_path");
@@ -363,6 +367,7 @@ namespace MultiLogViewer.Tests
         {
             // Arrange
             _viewModel = CreateViewModel();
+
             var logs = new List<LogEntry>
             {
                 new LogEntry { Message = "Alpha" },
