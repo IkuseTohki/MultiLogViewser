@@ -42,14 +42,14 @@ namespace MultiLogViewer.ViewModels
 
         private SearchViewModel? _searchViewModel;
 
-        private bool _isDetailPanelVisible = true;
+        private bool _isDetailPanelVisible = false;
         public bool IsDetailPanelVisible
         {
             get => _isDetailPanelVisible;
             set => SetProperty(ref _isDetailPanelVisible, value);
         }
 
-        private double _detailPanelWidth = 300;
+        private double _detailPanelWidth = 200;
         public double DetailPanelWidth
         {
             get => _detailPanelWidth;
