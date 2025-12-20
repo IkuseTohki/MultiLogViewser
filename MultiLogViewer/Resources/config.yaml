@@ -1,0 +1,28 @@
+# MultiLogViewer Configuration Template
+# ------------------------------------
+
+# 画面に表示する列の設定
+display_columns:
+  - { header: "Timestamp", binding_path: "Timestamp", width: 180, string_format: "yyyy/MM/dd HH:mm:ss.fff" }
+  - { header: "Level", binding_path: "AdditionalData[level]", width: 80 }
+  - { header: "Message", binding_path: "Message", width: 400 }
+  - { header: "File", binding_path: "FileName", width: 150 }
+  - { header: "Line", binding_path: "LineNumber", width: 60 }
+
+# ログファイルの読み込みルール
+log_formats:
+  - name: "SampleLog"
+    log_file_patterns:
+      - "sample.log"
+    # 例: 2023-12-20 10:00:00 [INFO] メッセージ
+    pattern: "^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}" \[(?<level>\\w+)\] (?<message>.*)$"
+    timestamp_format: "yyyy-MM-dd HH:mm:ss"
+    is_multiline: true
+    
+    # 表示のカスタマイズ例
+    field_transforms:
+      - field: "level"
+        map:
+          "INFO": "ℹ INFO"
+          "WARN": "⚠ WARN"
+          "ERROR": "❌ ERROR"

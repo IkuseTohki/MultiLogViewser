@@ -17,9 +17,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="..\config.yaml">
+    <None Update="Resources\config.yaml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+      <Link>config.yaml</Link>
+    </None>
   </ItemGroup>
 
 </Project>
