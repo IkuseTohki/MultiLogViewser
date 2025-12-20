@@ -8,15 +8,13 @@ namespace MultiLogViewer.Services
 {
     public class LogParser : ILogParser
     {
+        private readonly LogFormatConfig _config;
         private readonly Regex _regex;
-        private readonly string _timestampFormat;
-        private readonly List<SubPatternConfig> _subPatterns;
 
         public LogParser(LogFormatConfig config)
         {
-            _regex = new Regex(config.Pattern, RegexOptions.Compiled); // パフォーマンス向上のためCompiledオプションを付与
-            _timestampFormat = config.TimestampFormat;
-            _subPatterns = config.SubPatterns;
+            _config = config;
+            _regex = new Regex(config.Pattern, RegexOptions.Compiled);
         }
 
         public LogEntry? Parse(string logLine, string fileName, int lineNumber)
@@ -37,27 +35,25 @@ namespace MultiLogViewer.Services
             // Timestampのパース
             if (match.Groups["timestamp"].Success)
             {
-                if (DateTime.TryParseExact(match.Groups["timestamp"].Value, _timestampFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime timestamp))
+                var val = ApplyTransforms(match.Groups["timestamp"].Value, "timestamp", _config.FieldTransforms);
+                if (DateTime.TryParseExact(val, _config.TimestampFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime timestamp))
                 {
                     logEntry.Timestamp = timestamp;
                 }
                 else
                 {
-                    // 日時フォーマットが不正な場合は、現在の時刻を使用するか、エラーとして扱うか、要検討。
-                    // 現時点ではデフォルト値を使用
                     logEntry.Timestamp = DateTime.MinValue;
                 }
             }
             else
             {
-                // timestampグループがない場合も、デフォルト値を使用
                 logEntry.Timestamp = DateTime.MinValue;
             }
 
             // Messageの取得
             if (match.Groups["message"].Success)
             {
-                logEntry.Message = match.Groups["message"].Value;
+                logEntry.Message = ApplyTransforms(match.Groups["message"].Value, "message", _config.FieldTransforms);
             }
 
             // その他のキャプチャグループをAdditionalDataに格納
@@ -66,14 +62,14 @@ namespace MultiLogViewer.Services
                 if (group.Name != "0" && group.Success &&
                     group.Name != "timestamp" && group.Name != "message")
                 {
-                    logEntry.AdditionalData[group.Name] = group.Value;
+                    logEntry.AdditionalData[group.Name] = ApplyTransforms(group.Value, group.Name, _config.FieldTransforms);
                 }
             }
 
             // サブパターンの適用
-            if (_subPatterns != null)
+            if (_config.SubPatterns != null)
             {
-                foreach (var subPattern in _subPatterns)
+                foreach (var subPattern in _config.SubPatterns)
                 {
                     string sourceValue = string.Empty;
                     if (subPattern.SourceField == "message")
@@ -95,7 +91,7 @@ namespace MultiLogViewer.Services
                             {
                                 if (group.Name != "0" && group.Success)
                                 {
-                                    logEntry.AdditionalData[group.Name] = group.Value;
+                                    logEntry.AdditionalData[group.Name] = ApplyTransforms(group.Value, group.Name, subPattern.FieldTransforms);
                                 }
                             }
                         }
@@ -104,6 +100,30 @@ namespace MultiLogViewer.Services
             }
 
             return logEntry;
+        }
+
+        private string ApplyTransforms(string value, string fieldName, List<FieldTransformConfig> transforms)
+        {
+            if (transforms == null) return value;
+
+            var transform = transforms.Find(t => t.Field == fieldName);
+            if (transform == null) return value;
+
+            string result = value;
+
+            // 1. Map による置換
+            if (transform.Map != null && transform.Map.TryGetValue(value, out var mappedValue))
+            {
+                result = mappedValue;
+            }
+
+            // 2. Format による整形
+            if (!string.IsNullOrEmpty(transform.Format))
+            {
+                result = transform.Format.Replace("{value}", result);
+            }
+
+            return result;
         }
     }
 }

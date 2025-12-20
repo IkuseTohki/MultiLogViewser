@@ -146,5 +146,47 @@ namespace MultiLogViewer.Tests
             Assert.AreEqual("123", logEntry.AdditionalData["duration"]);
             Assert.AreEqual("200", logEntry.AdditionalData["status_code"]);
         }
+
+        [TestMethod]
+        public void ParseLogEntry_WithTransforms_AppliesMapAndFormat()
+        {
+            // テスト観点: field_transforms が指定されている場合、値が正しく置換・整形されることを確認する。
+            //             メインパターンとサブパターンの両方で変換が適用されることを確認する。
+
+            // Arrange
+            var config = new LogFormatConfig
+            {
+                Name = "TransformLog",
+                Pattern = @"^(?<level>[IWE]) (?<message>.*)$",
+                FieldTransforms = new List<FieldTransformConfig>
+                {
+                    new FieldTransformConfig { Field = "level", Map = new Dictionary<string, string> { { "I", "INFO" }, { "E", "ERROR" } } },
+                    new FieldTransformConfig { Field = "message", Format = "Content: {value}" }
+                },
+                SubPatterns = new List<SubPatternConfig>
+                {
+                    new SubPatternConfig
+                    {
+                        SourceField = "message",
+                        Pattern = @"ID:(?<id>\d+)",
+                        FieldTransforms = new List<FieldTransformConfig>
+                        {
+                            new FieldTransformConfig { Field = "id", Format = "UID_{value}" }
+                        }
+                    }
+                }
+            };
+            var logLine = "E Failed to login ID:123";
+            var parser = new LogParser(config);
+
+            // Act
+            var logEntry = parser.Parse(logLine, "test.log", 1);
+
+            // Assert
+            Assert.IsNotNull(logEntry);
+            Assert.AreEqual("ERROR", logEntry.AdditionalData["level"], "Map should transform 'E' to 'ERROR'.");
+            Assert.AreEqual("Content: Failed to login ID:123", logEntry.Message, "Format should prepend 'Content: '.");
+            Assert.AreEqual("UID_123", logEntry.AdditionalData["id"], "Sub-pattern transform should prepend 'UID_'.");
+        }
     }
 }
