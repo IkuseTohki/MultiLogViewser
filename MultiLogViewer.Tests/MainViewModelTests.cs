@@ -14,9 +14,10 @@ namespace MultiLogViewer.Tests
     {
         private Mock<ILogFileReader> _mockLogFileReader = null!;
         private Mock<IUserDialogService> _mockUserDialogService = null!;
+        private Mock<ISearchWindowService> _mockSearchWindowService = null!;
         private Mock<ILogFormatConfigLoader> _mockLogFormatConfigLoader = null!;
         private Mock<IFileResolver> _mockFileResolver = null!;
-        private Mock<IConfigPathResolver> _mockConfigPathResolver = null!; // 追加
+        private Mock<IConfigPathResolver> _mockConfigPathResolver = null!;
         private MainViewModel _viewModel = null!;
 
         [TestInitialize]
@@ -24,9 +25,21 @@ namespace MultiLogViewer.Tests
         {
             _mockLogFileReader = new Mock<ILogFileReader>();
             _mockUserDialogService = new Mock<IUserDialogService>();
+            _mockSearchWindowService = new Mock<ISearchWindowService>();
             _mockLogFormatConfigLoader = new Mock<ILogFormatConfigLoader>();
             _mockFileResolver = new Mock<IFileResolver>();
-            _mockConfigPathResolver = new Mock<IConfigPathResolver>(); // 初期化
+            _mockConfigPathResolver = new Mock<IConfigPathResolver>();
+        }
+
+        private MainViewModel CreateViewModel()
+        {
+            return new MainViewModel(
+                _mockLogFileReader.Object,
+                _mockUserDialogService.Object,
+                _mockSearchWindowService.Object,
+                _mockLogFormatConfigLoader.Object,
+                _mockFileResolver.Object,
+                _mockConfigPathResolver.Object);
         }
 
         [TestMethod]
@@ -64,12 +77,7 @@ namespace MultiLogViewer.Tests
             _mockLogFileReader.Setup(r => r.ReadFiles(filePaths, logFormats[0])).Returns(logEntries);
 
             // Act
-            _viewModel = new MainViewModel(
-                _mockLogFileReader.Object,
-                _mockUserDialogService.Object,
-                _mockLogFormatConfigLoader.Object,
-                _mockFileResolver.Object,
-                _mockConfigPathResolver.Object);
+            _viewModel = CreateViewModel();
             _viewModel.Initialize("dummy_path");
 
             // Assert
@@ -91,12 +99,7 @@ namespace MultiLogViewer.Tests
             _mockLogFormatConfigLoader.Setup(l => l.Load(It.IsAny<string>())).Returns((AppConfig?)null);
 
             // Act
-            _viewModel = new MainViewModel(
-                _mockLogFileReader.Object,
-                _mockUserDialogService.Object,
-                _mockLogFormatConfigLoader.Object,
-                _mockFileResolver.Object,
-                _mockConfigPathResolver.Object);
+            _viewModel = CreateViewModel();
             _viewModel.Initialize("dummy_path");
 
             // Assert
@@ -111,12 +114,7 @@ namespace MultiLogViewer.Tests
             var appConfig = new AppConfig();
             _mockLogFormatConfigLoader.Setup(l => l.Load(It.IsAny<string>())).Returns(appConfig);
 
-            _viewModel = new MainViewModel(
-                _mockLogFileReader.Object,
-                _mockUserDialogService.Object,
-                _mockLogFormatConfigLoader.Object,
-                _mockFileResolver.Object,
-                _mockConfigPathResolver.Object);
+            _viewModel = CreateViewModel();
 
             var propertyChangedFired = false;
             _viewModel.PropertyChanged += (sender, e) =>
@@ -141,12 +139,7 @@ namespace MultiLogViewer.Tests
             var appConfig = new AppConfig();
             _mockLogFormatConfigLoader.Setup(l => l.Load(It.IsAny<string>())).Returns(appConfig);
 
-            _viewModel = new MainViewModel(
-                _mockLogFileReader.Object,
-                _mockUserDialogService.Object,
-                _mockLogFormatConfigLoader.Object,
-                _mockFileResolver.Object,
-                _mockConfigPathResolver.Object);
+            _viewModel = CreateViewModel();
 
             var propertyChangedFired = false;
             _viewModel.PropertyChanged += (sender, e) =>
@@ -206,6 +199,7 @@ namespace MultiLogViewer.Tests
                 _viewModel = new MainViewModel(
                     realLogFileReader, // 実インスタンスを使用
                     _mockUserDialogService.Object,
+                    _mockSearchWindowService.Object,
                     _mockLogFormatConfigLoader.Object,
                     _mockFileResolver.Object,
                     _mockConfigPathResolver.Object);
@@ -297,7 +291,7 @@ namespace MultiLogViewer.Tests
                 _mockFileResolver.Setup(r => r.Resolve(It.IsAny<List<string>>())).Returns(new List<string> { tempLogFileName });
                 var realLogFileReader = new LogFileReader();
 
-                _viewModel = new MainViewModel(realLogFileReader, _mockUserDialogService.Object, _mockLogFormatConfigLoader.Object, _mockFileResolver.Object, _mockConfigPathResolver.Object);
+                _viewModel = new MainViewModel(realLogFileReader, _mockUserDialogService.Object, _mockSearchWindowService.Object, _mockLogFormatConfigLoader.Object, _mockFileResolver.Object, _mockConfigPathResolver.Object);
 
                 // Act (1): 初期読み込み
                 _viewModel.Initialize("dummy_path");
@@ -347,6 +341,264 @@ namespace MultiLogViewer.Tests
                     File.Delete(tempLogFileName);
                 }
             }
+        }
+
+        // --- Search Function Tests ---
+
+        [TestMethod]
+        public void OpenSearchCommand_ShowsSearchWindow()
+        {
+            // Arrange
+            _viewModel = CreateViewModel();
+
+            // Act
+            _viewModel.OpenSearchCommand.Execute(null);
+
+            // Assert
+            _mockSearchWindowService.Verify(s => s.Show(It.IsAny<SearchViewModel>()), Times.Once);
+        }
+
+        [TestMethod]
+        public void FindNext_WhenFound_SelectsEntry()
+        {
+            // Arrange
+            _viewModel = CreateViewModel();
+            var logs = new List<LogEntry>
+            {
+                new LogEntry { Message = "Alpha" },
+                new LogEntry { Message = "Beta" },
+                new LogEntry { Message = "Gamma" }
+            };
+            SetLogsToViewModel(_viewModel, logs);
+
+            // Capture the SearchViewModel passed to Show
+            SearchViewModel? capturedSearchVM = null;
+            _mockSearchWindowService.Setup(s => s.Show(It.IsAny<SearchViewModel>()))
+                .Callback<object>(vm => capturedSearchVM = vm as SearchViewModel);
+
+            _viewModel.OpenSearchCommand.Execute(null);
+            Assert.IsNotNull(capturedSearchVM);
+
+            capturedSearchVM.SearchText = "Beta";
+
+            // Act
+            capturedSearchVM.FindNextCommand.Execute(null);
+
+            // Assert
+            Assert.IsNotNull(_viewModel.SelectedLogEntry);
+            Assert.AreEqual("Beta", _viewModel.SelectedLogEntry.Message);
+        }
+
+        [TestMethod]
+        public void FindNext_MatchesAdditionalData()
+        {
+            // Arrange
+            _viewModel = CreateViewModel();
+            var logs = new List<LogEntry>
+            {
+                new LogEntry { Message = "Msg1", AdditionalData = new Dictionary<string, string> { { "Level", "INFO" } } },
+                new LogEntry { Message = "Msg2", AdditionalData = new Dictionary<string, string> { { "Level", "ERROR" } } },
+                new LogEntry { Message = "Msg3", AdditionalData = new Dictionary<string, string> { { "Level", "INFO" } } }
+            };
+            SetLogsToViewModel(_viewModel, logs);
+
+            SearchViewModel capturedSearchVM = GetSearchViewModel(_viewModel);
+            capturedSearchVM.SearchText = "ERROR";
+
+            // Act
+            capturedSearchVM.FindNextCommand.Execute(null);
+
+            // Assert
+            Assert.IsNotNull(_viewModel.SelectedLogEntry);
+            Assert.AreEqual("Msg2", _viewModel.SelectedLogEntry.Message);
+        }
+
+        [TestMethod]
+        public void FindNext_MatchesFileName()
+        {
+            // Arrange
+            _viewModel = CreateViewModel();
+            var logs = new List<LogEntry>
+            {
+                new LogEntry { Message = "Msg1", FileName = "App.log" },
+                new LogEntry { Message = "Msg2", FileName = "Error.log" },
+            };
+            SetLogsToViewModel(_viewModel, logs);
+
+            SearchViewModel capturedSearchVM = GetSearchViewModel(_viewModel);
+            capturedSearchVM.SearchText = "Error.log";
+
+            // Act
+            capturedSearchVM.FindNextCommand.Execute(null);
+
+            // Assert
+            Assert.IsNotNull(_viewModel.SelectedLogEntry);
+            Assert.AreEqual("Msg2", _viewModel.SelectedLogEntry.Message);
+        }
+
+        [TestMethod]
+        public void FindNext_CaseSensitivity_Respected()
+        {
+            // Arrange
+            _viewModel = CreateViewModel();
+            var logs = new List<LogEntry>
+            {
+                new LogEntry { Message = "apple" },
+                new LogEntry { Message = "Apple" },
+            };
+            SetLogsToViewModel(_viewModel, logs);
+
+            SearchViewModel capturedSearchVM = GetSearchViewModel(_viewModel);
+            capturedSearchVM.SearchText = "Apple";
+            capturedSearchVM.IsCaseSensitive = true;
+
+            // Act
+            capturedSearchVM.FindNextCommand.Execute(null);
+
+            // Assert
+            Assert.IsNotNull(_viewModel.SelectedLogEntry);
+            Assert.AreEqual("Apple", _viewModel.SelectedLogEntry.Message, "Should skip 'apple' and find 'Apple' when case sensitive.");
+        }
+
+        [TestMethod]
+        public void FindNext_InvalidRegex_DoesNotCrash()
+        {
+            // Arrange
+            _viewModel = CreateViewModel();
+            var logs = new List<LogEntry> { new LogEntry { Message = "Test" } };
+            SetLogsToViewModel(_viewModel, logs);
+
+            SearchViewModel capturedSearchVM = GetSearchViewModel(_viewModel);
+            capturedSearchVM.SearchText = "[Invalid Regex"; // Missing closing bracket
+            capturedSearchVM.IsRegex = true;
+
+            // Act
+            try
+            {
+                capturedSearchVM.FindNextCommand.Execute(null);
+            }
+            catch (System.Exception ex)
+            {
+                Assert.Fail($"Should not throw exception on invalid regex: {ex.Message}");
+            }
+
+            // Assert
+            // Should just not match anything, keeping selection null or same
+            // (In this test setup, expected behavior is silent failure/no move)
+        }
+
+        [TestMethod]
+        public void FindNext_UpdatesStatusText()
+        {
+            // Arrange
+            _viewModel = CreateViewModel();
+            var logs = new List<LogEntry>
+            {
+                new LogEntry { Message = "Target" },
+                new LogEntry { Message = "Target" },
+                new LogEntry { Message = "Target" }
+            };
+            SetLogsToViewModel(_viewModel, logs);
+
+            SearchViewModel capturedSearchVM = GetSearchViewModel(_viewModel);
+            capturedSearchVM.SearchText = "Target";
+
+            // Act
+            // Trigger search via property change (simulated by setting text above)
+            // But MainViewModel subscribes to PropertyChanged which is triggered by setter.
+            // Wait, GetSearchViewModel uses OpenSearchCommand, which creates the VM and subscribes.
+            // So setting SearchText above should trigger UpdateSearchStatus.
+
+            // Assert
+            // Initially, since no item is selected, it might say "?/3" or "0/3" depending on implementation.
+            // In my impl: if currentFound is false, it shows "?/3".
+            Assert.AreEqual("?/3", capturedSearchVM.StatusText);
+
+            // Act 2: Find Next (Selects first one)
+            capturedSearchVM.FindNextCommand.Execute(null);
+
+            // Assert 2: First item selected, so "1/3"
+            Assert.AreEqual("1/3", capturedSearchVM.StatusText);
+
+            // Act 3: Find Next again (Selects second one)
+            capturedSearchVM.FindNextCommand.Execute(null);
+            Assert.AreEqual("2/3", capturedSearchVM.StatusText);
+        }
+
+        [TestMethod]
+        public void FindNext_WrapsAround()
+        {
+            // Arrange
+            _viewModel = CreateViewModel();
+            var logs = new List<LogEntry>
+            {
+                new LogEntry { Message = "Target" },
+                new LogEntry { Message = "Other" },
+                new LogEntry { Message = "Target" }
+            };
+            SetLogsToViewModel(_viewModel, logs);
+
+            SearchViewModel capturedSearchVM = GetSearchViewModel(_viewModel);
+            capturedSearchVM.SearchText = "Target";
+
+            // Select last item
+            _viewModel.SelectedLogEntry = logs[2];
+
+            // Act
+            capturedSearchVM.FindNextCommand.Execute(null);
+
+            // Assert
+            Assert.IsNotNull(_viewModel.SelectedLogEntry);
+            Assert.AreEqual(logs[0], _viewModel.SelectedLogEntry, "Should wrap around to the first item.");
+        }
+
+        [TestMethod]
+        public void FindPrevious_WhenFound_SelectsEntry()
+        {
+            // Arrange
+            _viewModel = CreateViewModel();
+            var logs = new List<LogEntry>
+            {
+                new LogEntry { Message = "Target" }, // 0
+                new LogEntry { Message = "Other" },  // 1
+                new LogEntry { Message = "Target" }  // 2
+            };
+            SetLogsToViewModel(_viewModel, logs);
+
+            SearchViewModel capturedSearchVM = GetSearchViewModel(_viewModel);
+            capturedSearchVM.SearchText = "Target";
+
+            // Select middle item
+            _viewModel.SelectedLogEntry = logs[1];
+
+            // Act
+            capturedSearchVM.FindPreviousCommand.Execute(null);
+
+            // Assert
+            Assert.AreEqual(logs[0], _viewModel.SelectedLogEntry, "Should find the previous target.");
+        }
+
+        private void SetLogsToViewModel(MainViewModel vm, List<LogEntry> logs)
+        {
+            // Mock LogFileReader to return these logs
+            var config = new LogFormatConfig { Name = "Test", LogFilePatterns = new List<string> { "dummy" } };
+            var appConfig = new AppConfig { LogFormats = new List<LogFormatConfig> { config } };
+
+            _mockLogFormatConfigLoader.Setup(l => l.Load(It.IsAny<string>())).Returns(appConfig);
+            _mockFileResolver.Setup(r => r.Resolve(It.IsAny<List<string>>())).Returns(new List<string> { "dummy" });
+            _mockLogFileReader.Setup(r => r.ReadFiles(It.IsAny<List<string>>(), It.IsAny<LogFormatConfig>())).Returns(logs);
+
+            vm.Initialize("dummy");
+        }
+
+        private SearchViewModel GetSearchViewModel(MainViewModel vm)
+        {
+            SearchViewModel? captured = null;
+            _mockSearchWindowService.Setup(s => s.Show(It.IsAny<SearchViewModel>()))
+                .Callback<object>(obj => captured = obj as SearchViewModel);
+
+            vm.OpenSearchCommand.Execute(null);
+            return captured!;
         }
     }
 }

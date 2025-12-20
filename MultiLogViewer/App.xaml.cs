@@ -25,6 +25,7 @@ namespace MultiLogViewer
             services.AddSingleton<ILogFileReader, LogFileReader>();
             services.AddSingleton<IFileResolver, FileResolver>();
             services.AddSingleton<IUserDialogService, WpfUserDialogService>();
+            services.AddSingleton<ISearchWindowService, SearchWindowService>();
             services.AddSingleton<ILogFormatConfigLoader, LogFormatConfigLoader>();
             services.AddSingleton<IConfigPathResolver, ConfigPathResolver>();
 
@@ -33,6 +34,7 @@ namespace MultiLogViewer
                 new MainViewModel(
                     provider.GetRequiredService<ILogFileReader>(),
                     provider.GetRequiredService<IUserDialogService>(),
+                    provider.GetRequiredService<ISearchWindowService>(),
                     provider.GetRequiredService<ILogFormatConfigLoader>(),
                     provider.GetRequiredService<IFileResolver>(),
                     provider.GetRequiredService<IConfigPathResolver>()));
