@@ -72,16 +72,21 @@
                                 Height="24"
                                 Click="AddFilterButton_Click"
                                 Style="{StaticResource IconButtonStyle}"
-                                ToolTip="拡張フィルターを追加">
+                                ToolTip="拡張フィルター">
                             <Button.ContextMenu>
-                                <ContextMenu x:Name="AvailableKeysMenu" ItemsSource="{Binding AvailableAdditionalDataKeys}">
-                                    <ContextMenu.ItemContainerStyle>
-                                        <Style TargetType="MenuItem">
-                                            <Setter Property="Header" Value="{Binding}" />
-                                            <Setter Property="Command" Value="{Binding DataContext.AddExtensionFilterCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                            <Setter Property="CommandParameter" Value="{Binding}" />
-                                        </Style>
-                                    </ContextMenu.ItemContainerStyle>
+                                <ContextMenu>
+                                    <MenuItem Header="拡張フィルターを追加" ItemsSource="{Binding AvailableAdditionalDataKeys}">
+                                        <MenuItem.ItemContainerStyle>
+                                            <Style TargetType="MenuItem">
+                                                <Setter Property="Header" Value="{Binding}" />
+                                                <Setter Property="Command" Value="{Binding DataContext.AddExtensionFilterCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                                <Setter Property="CommandParameter" Value="{Binding}" />
+                                            </Style>
+                                        </MenuItem.ItemContainerStyle>
+                                    </MenuItem>
+                                    <Separator />
+                                    <MenuItem Command="{Binding SavePresetCommand}" Header="フィルターを保存..." />
+                                    <MenuItem Command="{Binding LoadPresetCommand}" Header="フィルターを読み込む..." />
                                 </ContextMenu>
                             </Button.ContextMenu>
                             <Path Width="12"

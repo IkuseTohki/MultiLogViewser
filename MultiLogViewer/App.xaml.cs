@@ -32,6 +32,7 @@ namespace MultiLogViewer
             services.AddSingleton<ILogService, LogService>();
             services.AddSingleton<IClipboardService, WpfClipboardService>();
             services.AddSingleton<IConfigPathResolver, ConfigPathResolver>();
+            services.AddSingleton<IFilterPresetService, FilterPresetService>();
 
             // ViewModels
             services.AddTransient(provider =>
@@ -41,7 +42,8 @@ namespace MultiLogViewer
                     provider.GetRequiredService<ISearchWindowService>(),
                     provider.GetRequiredService<ILogSearchService>(),
                     provider.GetRequiredService<IClipboardService>(),
-                    provider.GetRequiredService<IConfigPathResolver>()));
+                    provider.GetRequiredService<IConfigPathResolver>(),
+                    provider.GetRequiredService<IFilterPresetService>()));
 
 
             // Main Window

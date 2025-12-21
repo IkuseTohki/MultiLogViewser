@@ -14,10 +14,12 @@ namespace MultiLogViewer.Models
     /// </summary>
     public class LogFilter
     {
-        public FilterType Type { get; }
-        public string Key { get; }      // カラムフィルターの場合はキー名
-        public DateTime Value { get; }  // 日時フィルターの場合は基準日時
-        public string DisplayText { get; } // バッジに表示する文字列
+        public FilterType Type { get; set; }
+        public string Key { get; set; } = string.Empty;      // カラムフィルターの場合はキー名
+        public DateTime Value { get; set; }  // 日時フィルターの場合は基準日時
+        public string DisplayText { get; set; } = string.Empty; // バッジに表示する文字列
+
+        public LogFilter() { }
 
         public LogFilter(FilterType type, string key, DateTime value, string displayText)
         {
@@ -25,6 +27,20 @@ namespace MultiLogViewer.Models
             Key = key;
             Value = value;
             DisplayText = displayText;
+        }
+
+        /// <summary>
+        /// フィルターの設定内容が有効かどうかを検証します。
+        /// </summary>
+        /// <exception cref="System.Exception">設定が無効な場合にスローされます。</exception>
+        public void Validate()
+        {
+            if (Type == FilterType.ColumnEmpty && string.IsNullOrWhiteSpace(Key))
+            {
+                throw new System.Exception("カラムフィルターに有効なキーが指定されていません。");
+            }
+
+            // 必要に応じて他のバリデーション（日時の範囲チェック等）もここに追加可能
         }
 
         // 同一性の判定（同じ種類のフィルターを上書きするため）

@@ -21,6 +21,7 @@ namespace MultiLogViewer.ViewModels
         private readonly ILogSearchService _logSearchService;
         private readonly IClipboardService _clipboardService;
         private readonly IConfigPathResolver _configPathResolver;
+        private readonly IFilterPresetService _filterPresetService;
 
         private string _configPath = string.Empty;
         private List<FileState> _fileStates = new List<FileState>();
@@ -108,6 +109,8 @@ namespace MultiLogViewer.ViewModels
         public ICommand AddDateTimeFilterCommand { get; }
         public ICommand RemoveExtensionFilterCommand { get; }
         public ICommand ToggleTailCommand { get; }
+        public ICommand SavePresetCommand { get; }
+        public ICommand LoadPresetCommand { get; }
 
         private ObservableCollection<LogFilter> _activeExtensionFilters = new ObservableCollection<LogFilter>();
         public ObservableCollection<LogFilter> ActiveExtensionFilters => _activeExtensionFilters;
@@ -121,7 +124,8 @@ namespace MultiLogViewer.ViewModels
             ISearchWindowService searchWindowService,
             ILogSearchService logSearchService,
             IClipboardService clipboardService,
-            IConfigPathResolver configPathResolver)
+            IConfigPathResolver configPathResolver,
+            IFilterPresetService filterPresetService)
         {
             _logService = logService;
             _userDialogService = userDialogService;
@@ -129,6 +133,7 @@ namespace MultiLogViewer.ViewModels
             _logSearchService = logSearchService;
             _clipboardService = clipboardService;
             _configPathResolver = configPathResolver;
+            _filterPresetService = filterPresetService;
 
             LogEntriesView = CollectionViewSource.GetDefaultView(_logEntries);
             LogEntriesView.Filter = FilterLogEntries;
@@ -141,11 +146,64 @@ namespace MultiLogViewer.ViewModels
             AddDateTimeFilterCommand = new RelayCommand(param => AddDateTimeFilter(param));
             RemoveExtensionFilterCommand = new RelayCommand(param => RemoveExtensionFilter(param as LogFilter));
             ToggleTailCommand = new RelayCommand(_ => IsTailEnabled = !IsTailEnabled);
+            SavePresetCommand = new RelayCommand(_ => SavePreset());
+            LoadPresetCommand = new RelayCommand(_ => LoadPreset());
 
             _activeExtensionFilters.CollectionChanged += (s, e) => LogEntriesView.Refresh();
 
             _tailTimer = new System.Windows.Threading.DispatcherTimer();
             _tailTimer.Tick += TailTimer_Tick;
+        }
+
+        private void SavePreset()
+        {
+            var path = _userDialogService.SaveFileDialog("YAML files (*.yaml)|*.yaml|All files (*.*)|*.*", "filter_preset.yaml");
+            if (string.IsNullOrEmpty(path)) return;
+
+            try
+            {
+                var preset = new FilterPreset
+                {
+                    FilterText = FilterText,
+                    ExtensionFilters = _activeExtensionFilters.ToList()
+                };
+                _filterPresetService.Save(path, preset);
+            }
+            catch (Exception ex)
+            {
+                _userDialogService.ShowError("保存エラー", $"プリセットの保存に失敗しました。\n{ex.Message}");
+            }
+        }
+
+        private void LoadPreset()
+        {
+            var path = _userDialogService.OpenFileDialog("YAML files (*.yaml)|*.yaml|All files (*.*)|*.*");
+            if (string.IsNullOrEmpty(path)) return;
+
+            try
+            {
+                var preset = _filterPresetService.Load(path);
+                if (preset == null) return;
+
+                FilterText = preset.FilterText;
+                _activeExtensionFilters.Clear();
+                foreach (var filter in preset.ExtensionFilters)
+                {
+                    // カラムフィルターの場合、現在利用可能なキーに含まれている場合のみ登録する
+                    if (filter.Type == FilterType.ColumnEmpty)
+                    {
+                        if (!AvailableAdditionalDataKeys.Contains(filter.Key))
+                        {
+                            continue; // 存在しないキーは無視
+                        }
+                    }
+                    _activeExtensionFilters.Add(filter);
+                }
+            }
+            catch (Exception ex)
+            {
+                _userDialogService.ShowError("読み込みエラー", $"プリセットの読み込みに失敗しました。\n{ex.Message}");
+            }
         }
 
         private void TailTimer_Tick(object? sender, EventArgs e)

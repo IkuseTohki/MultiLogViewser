@@ -108,5 +108,33 @@ namespace MultiLogViewer.Tests
             Assert.IsTrue(userStyle.SemanticColoring);
             Assert.AreEqual(0, userStyle.Rules.Count);
         }
+
+        /// <summary>
+        /// テスト観点: 不正な形式のYAMLファイルを読み込んだ際、ユーザー向けの親切なエラーメッセージを含む例外が投げられることを確認する。
+        /// </summary>
+        [TestMethod]
+        public void LoadConfig_InvalidYaml_ThrowsExceptionWithFriendlyMessage()
+        {
+            // Arrange
+            var configPath = Path.Combine(Path.GetTempPath(), "invalid_config.yaml");
+            File.WriteAllText(configPath, "invalid: [ : : yaml"); // 構文エラーになるYAML
+            var loader = new LogFormatConfigLoader();
+
+            try
+            {
+                // Act
+                loader.Load(configPath);
+                Assert.Fail("Should have thrown an exception.");
+            }
+            catch (System.Exception ex)
+            {
+                // Assert
+                Assert.IsTrue(ex.Message.Contains("設定ファイル(config.yaml)の解析に失敗しました"), $"Actual message: {ex.Message}");
+            }
+            finally
+            {
+                if (File.Exists(configPath)) File.Delete(configPath);
+            }
+        }
     }
 }

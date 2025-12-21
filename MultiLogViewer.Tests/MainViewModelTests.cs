@@ -18,6 +18,7 @@ namespace MultiLogViewer.Tests
         private ILogSearchService _logSearchService = null!;
         private Mock<IClipboardService> _mockClipboardService = null!; // 追加
         private Mock<IConfigPathResolver> _mockConfigPathResolver = null!;
+        private Mock<IFilterPresetService> _mockFilterPresetService = null!;
         private MainViewModel _viewModel = null!;
 
         [TestInitialize]
@@ -29,6 +30,7 @@ namespace MultiLogViewer.Tests
             _logSearchService = new LogSearchService();
             _mockClipboardService = new Mock<IClipboardService>(); // 追加
             _mockConfigPathResolver = new Mock<IConfigPathResolver>();
+            _mockFilterPresetService = new Mock<IFilterPresetService>();
         }
 
         private MainViewModel CreateViewModel()
@@ -39,7 +41,8 @@ namespace MultiLogViewer.Tests
                 _mockSearchWindowService.Object,
                 _logSearchService,
                 _mockClipboardService.Object, // 追加
-                _mockConfigPathResolver.Object);
+                _mockConfigPathResolver.Object,
+                _mockFilterPresetService.Object);
         }
 
         [TestMethod]
@@ -193,6 +196,72 @@ namespace MultiLogViewer.Tests
 
             // Assert
             _mockUserDialogService.Verify(s => s.ShowError("設定エラー", errorMessage), Times.Once);
+        }
+
+        [TestMethod]
+        public void SavePresetCommand_OpensDialogAndCallsService()
+        {
+            // Arrange
+            _viewModel = CreateViewModel();
+            _viewModel.FilterText = "TestFilter";
+            _mockUserDialogService.Setup(s => s.SaveFileDialog(It.IsAny<string>(), It.IsAny<string>()))
+                .Returns("preset.yaml");
+
+            // Act
+            _viewModel.SavePresetCommand.Execute(null);
+
+            // Assert
+            _mockUserDialogService.Verify(s => s.SaveFileDialog(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+            _mockFilterPresetService.Verify(s => s.Save("preset.yaml", It.Is<FilterPreset>(p => p.FilterText == "TestFilter")), Times.Once);
+        }
+
+        [TestMethod]
+        public void LoadPresetCommand_OpensDialogAndUpdatesViewModel()
+        {
+            // Arrange
+            _viewModel = CreateViewModel();
+            var preset = new FilterPreset { FilterText = "LoadedFilter" };
+            _mockUserDialogService.Setup(s => s.OpenFileDialog(It.IsAny<string>()))
+                .Returns("preset.yaml");
+            _mockFilterPresetService.Setup(s => s.Load("preset.yaml"))
+                .Returns(preset);
+
+            // Act
+            _viewModel.LoadPresetCommand.Execute(null);
+
+            // Assert
+            Assert.AreEqual("LoadedFilter", _viewModel.FilterText);
+            _mockUserDialogService.Verify(s => s.OpenFileDialog(It.IsAny<string>()), Times.Once);
+        }
+
+        [TestMethod]
+        public void LoadPresetCommand_IgnoresNonExistentKeys()
+        {
+            // Arrange
+            _viewModel = CreateViewModel();
+            _viewModel.AvailableAdditionalDataKeys.Add("ExistKey");
+
+            var preset = new FilterPreset
+            {
+                ExtensionFilters = new List<LogFilter>
+                {
+                    new LogFilter(FilterType.ColumnEmpty, "ExistKey", default, "Exist"),
+                    new LogFilter(FilterType.ColumnEmpty, "NonExistKey", default, "NonExist"),
+                    new LogFilter(FilterType.DateTimeAfter, "", DateTime.Now, "Date") // 日時フィルタは常に許可
+                }
+            };
+
+            _mockUserDialogService.Setup(s => s.OpenFileDialog(It.IsAny<string>())).Returns("preset.yaml");
+            _mockFilterPresetService.Setup(s => s.Load("preset.yaml")).Returns(preset);
+
+            // Act
+            _viewModel.LoadPresetCommand.Execute(null);
+
+            // Assert
+            Assert.AreEqual(2, _viewModel.ActiveExtensionFilters.Count);
+            Assert.IsTrue(_viewModel.ActiveExtensionFilters.Any(f => f.Key == "ExistKey"));
+            Assert.IsTrue(_viewModel.ActiveExtensionFilters.Any(f => f.Type == FilterType.DateTimeAfter));
+            Assert.IsFalse(_viewModel.ActiveExtensionFilters.Any(f => f.Key == "NonExistKey"), "Non-existent key should be ignored.");
         }
 
         [TestMethod]
