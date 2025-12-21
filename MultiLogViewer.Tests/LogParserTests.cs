@@ -188,5 +188,81 @@ namespace MultiLogViewer.Tests
             Assert.AreEqual("Content: Failed to login ID:123", logEntry.Message, "Format should prepend 'Content: '.");
             Assert.AreEqual("UID_123", logEntry.AdditionalData["id"], "Sub-pattern transform should prepend 'UID_'.");
         }
+
+        [TestMethod]
+        public void ParseLogEntry_InvalidTimestamp_ReturnsMinValue()
+        {
+            // テスト観点: 時刻のキャプチャには成功したが、書式が正しくない場合に DateTime.MinValue が設定されること
+            var config = new LogFormatConfig
+            {
+                Pattern = @"^(?<timestamp>.*?) (?<message>.*)$",
+                TimestampFormat = "yyyy-MM-dd"
+            };
+            var logLine = "invalid-date Hello";
+            var parser = new LogParser(config);
+
+            var result = parser.Parse(logLine, "test.log", 1);
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(DateTime.MinValue, result.Timestamp);
+        }
+
+        [TestMethod]
+        public void ParseLogEntry_MissingTimestampGroup_DoesNotCrash()
+        {
+            // テスト観点: 正規表現に 'timestamp' グループが含まれていない場合でも、クラッシュせずに他のデータがパースされること
+            var config = new LogFormatConfig
+            {
+                Pattern = @"^\[(?<level>\w+)\] (?<message>.*)$"
+            };
+            var logLine = "[INFO] Simple message";
+            var parser = new LogParser(config);
+
+            var result = parser.Parse(logLine, "test.log", 1);
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(DateTime.MinValue, result.Timestamp);
+            Assert.AreEqual("INFO", result.AdditionalData["level"]);
+            Assert.AreEqual("Simple message", result.Message);
+        }
+
+        [TestMethod]
+        public void ParseLogEntry_SubPatternSourceNotFound_DoesNotCrash()
+        {
+            // テスト観点: サブパターンの SourceField がログエントリ内に存在しない場合でも、無視されて続行されること
+            var config = new LogFormatConfig
+            {
+                Pattern = @"^(?<message>.*)$",
+                SubPatterns = new List<SubPatternConfig>
+                {
+                    new SubPatternConfig { SourceField = "non_existent", Pattern = @"(?<data>.*)" }
+                }
+            };
+            var logLine = "Hello world";
+            var parser = new LogParser(config);
+
+            var result = parser.Parse(logLine, "test.log", 1);
+
+            Assert.IsNotNull(result);
+            Assert.IsFalse(result.AdditionalData.ContainsKey("data"));
+        }
+
+        [TestMethod]
+        public void ParseLogEntry_EmptyCapture_HandlesCorrectly()
+        {
+            // テスト観点: キャプチャした値が空文字の場合でも、正しく格納されること
+            var config = new LogFormatConfig
+            {
+                Pattern = @"^\[(?<level>.*?)\] (?<message>.*)$"
+            };
+            var logLine = "[] Empty level";
+            var parser = new LogParser(config);
+
+            var result = parser.Parse(logLine, "test.log", 1);
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual("", result.AdditionalData["level"]);
+            Assert.AreEqual("Empty level", result.Message);
+        }
     }
 }

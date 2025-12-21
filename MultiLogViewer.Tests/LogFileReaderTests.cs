@@ -218,5 +218,74 @@ namespace MultiLogViewer.Tests
             // Assert
             Assert.AreEqual(0, logEntries.Count);
         }
+
+        [TestMethod]
+        public void ReadIncremental_ContinuousWrite_ReadsNewLinesOnly()
+        {
+            // テスト観点: ReadIncrementalが前回の続きから新しい行だけを読み込み、状態を更新すること。
+            var config = new LogFormatConfig
+            {
+                Pattern = @"^(?<message>.*)$",
+                IsMultiline = false
+            };
+            var testLogFile = Path.Combine(_tempDirectory, "incremental.log");
+
+            // 1. 初回の書き込み
+            File.WriteAllLines(testLogFile, new[] { "Line 1", "Line 2" });
+            var state0 = new FileState(testLogFile, 0, 0);
+
+            // 2. 初回の読み込み
+            var (entries1, state1) = _reader.ReadIncremental(state0, config);
+            Assert.AreEqual(2, entries1.Count());
+            Assert.AreEqual(2, state1.LastLineNumber);
+            Assert.IsTrue(state1.LastPosition > 0);
+
+            // 3. 追記
+            using (var sw = File.AppendText(testLogFile))
+            {
+                sw.WriteLine("Line 3");
+            }
+
+            // 4. 逐次読み込み
+            var (entries2, state2) = _reader.ReadIncremental(state1, config);
+            Assert.AreEqual(1, entries2.Count());
+            Assert.AreEqual("Line 3", entries2.First().Message);
+            Assert.AreEqual(3, state2.LastLineNumber);
+        }
+
+        [TestMethod]
+        public void ReadIncremental_FileRotated_ReadsFromStart()
+        {
+            // テスト観点: ファイルサイズが小さくなった（ログローテーション）場合、最初から読み直すこと。
+            var config = new LogFormatConfig { Pattern = @"^(?<message>.*)$" };
+            var testLogFile = Path.Combine(_tempDirectory, "rotation.log");
+
+            // 1. 初回読み込み
+            File.WriteAllLines(testLogFile, new[] { "Old Log 1", "Old Log 2" });
+            var (_, state1) = _reader.ReadIncremental(new FileState(testLogFile, 0, 0), config);
+
+            // 2. ファイルを上書き（サイズを小さくする）
+            File.WriteAllLines(testLogFile, new[] { "New Log 1" });
+
+            // 3. 逐次読み込み
+            var (entries2, state2) = _reader.ReadIncremental(state1, config);
+
+            // Assert
+            Assert.AreEqual(1, entries2.Count(), "Should read from the beginning of the new file.");
+            Assert.AreEqual("New Log 1", entries2.First().Message);
+            Assert.AreEqual(1, state2.LastLineNumber);
+        }
+
+        [TestMethod]
+        public void ReadIncremental_NonExistentFile_ReturnsEmptyAndPreservesState()
+        {
+            // テスト観点: ファイルが存在しない場合、空リストを返し、クラッシュしないこと。
+            var state = new FileState("non_existent.log", 100, 10);
+            var (entries, updatedState) = _reader.ReadIncremental(state, new LogFormatConfig());
+
+            Assert.AreEqual(0, entries.Count());
+            Assert.AreEqual(state.FilePath, updatedState.FilePath);
+            Assert.AreEqual(state.LastPosition, updatedState.LastPosition);
+        }
     }
 }
