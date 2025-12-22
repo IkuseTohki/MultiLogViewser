@@ -15,6 +15,10 @@
         WindowStyle="None"
         mc:Ignorable="d">
 
+    <Window.InputBindings>
+        <KeyBinding Key="Escape" Command="{Binding CloseCommand}" />
+    </Window.InputBindings>
+
     <Border Padding="2"
             Background="{StaticResource WindowBackgroundBrush}"
             BorderBrush="{StaticResource BorderBrush}"
