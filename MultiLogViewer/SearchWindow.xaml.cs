@@ -9,15 +9,5 @@ namespace MultiLogViewer
         {
             InitializeComponent();
         }
-
-        protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
-        {
-            base.OnMouseLeftButtonDown(e);
-            // Allow dragging the window
-            if (e.ButtonState == MouseButtonState.Pressed)
-            {
-                this.DragMove();
-            }
-        }
     }
 }

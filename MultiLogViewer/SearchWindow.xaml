@@ -38,6 +38,7 @@
 
             <!-- Drag Handle -->
             <Border Grid.Column="0"
+                    behaviors:WindowDragBehavior.LeftButtonDrag="True"
                     Background="Transparent"
                     Cursor="SizeAll" />
 

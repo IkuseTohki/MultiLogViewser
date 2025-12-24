@@ -8,15 +8,6 @@ namespace MultiLogViewer
         public GoToDateWindow()
         {
             InitializeComponent();
-
-            // タイトルバーがないため、背景のドラッグでウィンドウを移動できるようにする
-            this.MouseLeftButtonDown += (s, e) =>
-            {
-                if (e.LeftButton == MouseButtonState.Pressed)
-                {
-                    this.DragMove();
-                }
-            };
         }
     }
 }
