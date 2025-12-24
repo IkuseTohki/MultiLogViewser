@@ -1,9 +1,10 @@
+using MultiLogViewer.ViewModels;
 using System;
 using System.Collections.Generic;
 
 namespace MultiLogViewer.Models
 {
-    public class LogEntry
+    public class LogEntry : ViewModelBase
     {
         public DateTime Timestamp { get; set; }
         public string Message { get; set; } = string.Empty;
@@ -12,5 +13,12 @@ namespace MultiLogViewer.Models
         public string FileFullPath { get; set; } = string.Empty;
         public int LineNumber { get; set; }
         public Dictionary<string, string> AdditionalData { get; set; } = new Dictionary<string, string>();
+
+        private bool _isBookmarked;
+        public bool IsBookmarked
+        {
+            get => _isBookmarked;
+            set => SetProperty(ref _isBookmarked, value);
+        }
     }
 }

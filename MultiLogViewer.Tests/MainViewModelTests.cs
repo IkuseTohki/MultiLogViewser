@@ -631,6 +631,27 @@ namespace MultiLogViewer.Tests
             Assert.AreEqual(targetEntry, _viewModel.SelectedLogEntry);
         }
 
+        [TestMethod]
+        public async Task ToggleBookmarkCommand_TogglesSelection()
+        {
+            // Arrange
+            _viewModel = CreateViewModel();
+            var entry = new LogEntry { Message = "Test" };
+            var logs = new List<LogEntry> { entry };
+            await SetLogsToViewModel(_viewModel, logs);
+            _viewModel.SelectedLogEntry = entry;
+
+            // Act 1: Mark
+            _viewModel.ToggleBookmarkCommand.Execute(null);
+            // Assert 1
+            Assert.IsTrue(entry.IsBookmarked, "Should be marked");
+
+            // Act 2: Unmark
+            _viewModel.ToggleBookmarkCommand.Execute(null);
+            // Assert 2
+            Assert.IsFalse(entry.IsBookmarked, "Should be unmarked");
+        }
+
         private async Task SetLogsToViewModel(MainViewModel vm, List<LogEntry> logs)
         {
             var result = new LogDataResult(logs, new List<DisplayColumnConfig>(), new List<FileState>());

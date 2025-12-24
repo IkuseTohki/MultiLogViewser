@@ -116,6 +116,7 @@ namespace MultiLogViewer.ViewModels
         public ICommand OpenSearchCommand { get; }
         public ICommand CopyCommand { get; }
         public ICommand GoToDateCommand { get; }
+        public ICommand ToggleBookmarkCommand { get; }
         public ICommand ToggleDetailPanelCommand { get; }
         public ICommand AddExtensionFilterCommand { get; }
         public ICommand AddDateTimeFilterCommand { get; }
@@ -173,6 +174,7 @@ namespace MultiLogViewer.ViewModels
             OpenSearchCommand = new RelayCommand(_ => OpenSearch());
             CopyCommand = new RelayCommand(_ => CopySelectedLogEntry());
             GoToDateCommand = new RelayCommand(_ => OpenGoToDateDialog());
+            ToggleBookmarkCommand = new RelayCommand(_ => ToggleBookmark());
             ToggleDetailPanelCommand = new RelayCommand(_ => IsDetailPanelVisible = !IsDetailPanelVisible);
             AddExtensionFilterCommand = new RelayCommand(param => AddExtensionFilter(param as string));
             AddDateTimeFilterCommand = new RelayCommand(param => AddDateTimeFilter(param));
@@ -364,31 +366,75 @@ namespace MultiLogViewer.ViewModels
         }
 
         private void OpenGoToDateDialog()
+
         {
+
             var initialDate = SelectedLogEntry?.Timestamp ?? DateTime.Now;
 
+
+
             // クリップボードに日時があればそれを優先する
+
             var clipboardText = _clipboardService.GetText();
+
             var parsedDate = DateTimeParser.TryParse(clipboardText);
+
             if (parsedDate.HasValue)
+
             {
+
                 initialDate = parsedDate.Value;
+
             }
 
+
+
             var timestampConfig = DisplayColumns.FirstOrDefault(c => c.BindingPath == "Timestamp");
+
             var isSecondsEnabled = timestampConfig?.StringFormat?.Contains("s") ?? true;
+
+
 
             var viewModel = new GoToDateViewModel(initialDate, isSecondsEnabled);
 
+
+
             _goToDateDialogService.Show(viewModel, (targetDateTime) =>
-    {
-        var targetEntry = _logSearchService.FindByDateTime(LogEntriesView.Cast<LogEntry>(), targetDateTime);
-        if (targetEntry != null)
+
+            {
+
+                var targetEntry = _logSearchService.FindByDateTime(LogEntriesView.Cast<LogEntry>(), targetDateTime);
+
+                if (targetEntry != null)
+
+                {
+
+                    SelectedLogEntry = targetEntry;
+
+                }
+
+            });
+
+        }
+
+
+
+        private void ToggleBookmark()
+
         {
-            SelectedLogEntry = targetEntry;
+
+            if (SelectedLogEntry != null)
+
+            {
+
+                SelectedLogEntry.IsBookmarked = !SelectedLogEntry.IsBookmarked;
+
+            }
+
         }
-    });
-        }
+
+
+
         private void OpenSearch()
         {
             if (_searchViewModel == null)

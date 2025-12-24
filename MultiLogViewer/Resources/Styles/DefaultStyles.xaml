@@ -9,7 +9,7 @@
         <Setter Property="GridLinesVisibility" Value="Horizontal" />
         <Setter Property="HorizontalGridLinesBrush" Value="{StaticResource BorderBrush}" />
         <Setter Property="VerticalGridLinesBrush" Value="{StaticResource BorderBrush}" />
-        <Setter Property="HeadersVisibility" Value="Column" />
+        <Setter Property="HeadersVisibility" Value="All" />
         <Setter Property="CanUserSortColumns" Value="True" />
         <Setter Property="AutoGenerateColumns" Value="False" />
         <Setter Property="IsReadOnly" Value="True" />
@@ -79,6 +79,38 @@
                             <Setter TargetName="SortArrow" Property="Visibility" Value="Visible" />
                             <Setter TargetName="SortArrow" Property="Data" Value="M 0 0 L 4 5 L 8 0 Z" />
                         </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- DataGridRowHeader Style -->
+    <Style TargetType="{x:Type DataGridRowHeader}">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Width" Value="20" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type DataGridRowHeader}">
+                    <Grid>
+                        <Border Padding="{TemplateBinding Padding}"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                            <Path x:Name="BookmarkIcon"
+                                  Width="10"
+                                  Height="12"
+                                  Data="{StaticResource BookmarkIconGeometry}"
+                                  Fill="{StaticResource PrimaryHueMidBrush}"
+                                  Stretch="Uniform"
+                                  Visibility="Collapsed" />
+                        </Border>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <DataTrigger Binding="{Binding IsBookmarked}" Value="True">
+                            <Setter TargetName="BookmarkIcon" Property="Visibility" Value="Visible" />
+                        </DataTrigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
