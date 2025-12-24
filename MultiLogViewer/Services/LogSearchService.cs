@@ -68,7 +68,7 @@ namespace MultiLogViewer.Services
             return null;
         }
 
-        public (int matchCount, int currentIndex) GetSearchStatistics(IEnumerable<LogEntry> entries, LogEntry? currentSelection, SearchCriteria criteria)
+        public (int Count, int CurrentIndex) GetSearchStatistics(IEnumerable<LogEntry> entries, LogEntry? currentSelection, SearchCriteria criteria)
         {
             if (string.IsNullOrEmpty(criteria.SearchText)) return (0, 0);
 
@@ -127,6 +127,46 @@ namespace MultiLogViewer.Services
             }
 
             return false;
+        }
+
+        public LogEntry? FindByDateTime(IEnumerable<LogEntry> logs, DateTime targetTime)
+        {
+            if (logs == null) return null;
+
+            var list = logs as IList<LogEntry>;
+            if (list == null)
+            {
+                list = logs.ToList();
+            }
+
+            if (list.Count == 0) return null;
+
+            // 範囲外チェック
+            if (list[0].Timestamp >= targetTime) return list[0];
+
+            // 全てのログが指定時刻より前の場合、最後のログを返す
+            if (list[list.Count - 1].Timestamp < targetTime) return list[list.Count - 1];
+
+            // 二分探索 (Lower Bound)
+            int left = 0;
+            int right = list.Count - 1;
+            LogEntry? result = null;
+
+            while (left <= right)
+            {
+                int mid = left + (right - left) / 2;
+                if (list[mid].Timestamp >= targetTime)
+                {
+                    result = list[mid];
+                    right = mid - 1;
+                }
+                else
+                {
+                    left = mid + 1;
+                }
+            }
+
+            return result ?? list[list.Count - 1];
         }
     }
 }

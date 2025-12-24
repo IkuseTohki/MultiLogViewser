@@ -8,5 +8,14 @@ namespace MultiLogViewer.Services
         {
             Clipboard.SetDataObject(text);
         }
+
+        public string? GetText()
+        {
+            if (Clipboard.ContainsText())
+            {
+                return Clipboard.GetText();
+            }
+            return null;
+        }
     }
 }

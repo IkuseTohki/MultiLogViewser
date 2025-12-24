@@ -1,4 +1,5 @@
 using MultiLogViewer.Models;
+using System;
 using System.Collections.Generic;
 
 namespace MultiLogViewer.Services
@@ -19,16 +20,18 @@ namespace MultiLogViewer.Services
         LogEntry? Find(IEnumerable<LogEntry> entries, LogEntry? currentSelection, SearchCriteria criteria, bool forward);
 
         /// <summary>
-        /// 全ヒット数と、現在の選択位置が何番目のヒットかを取得します。
+        /// 指定された条件で検索を行い、マッチした数を返します。
         /// </summary>
-        (int matchCount, int currentIndex) GetSearchStatistics(IEnumerable<LogEntry> entries, LogEntry? currentSelection, SearchCriteria criteria);
+        (int Count, int CurrentIndex) GetSearchStatistics(IEnumerable<LogEntry> logs, LogEntry? currentEntry, SearchCriteria criteria);
 
         /// <summary>
-        /// 指定されたフィルターに基づいて、そのログエントリを非表示にすべきかどうかを判定します。
+        /// 指定された日時以降の最初のログエントリを検索します。
         /// </summary>
-        /// <param name="entry">判定対象のログエントリ。</param>
-        /// <param name="filters">適用されている拡張フィルターの一覧。</param>
-        /// <returns>非表示にすべきなら true、そうでなければ false。</returns>
+        LogEntry? FindByDateTime(IEnumerable<LogEntry> logs, DateTime targetTime);
+
+        /// <summary>
+        /// ログエントリがフィルター条件に該当し、非表示にすべきかどうかを判定します。
+        /// </summary>
         bool ShouldHide(LogEntry entry, IEnumerable<LogFilter> filters);
     }
 }

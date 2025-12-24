@@ -48,6 +48,9 @@
         <KeyBinding Key="C"
                     Command="{Binding CopyCommand}"
                     Modifiers="Control" />
+        <KeyBinding Key="G"
+                    Command="{Binding GoToDateCommand}"
+                    Modifiers="Control" />
         <KeyBinding Key="F5" Command="{Binding RefreshCommand}" />
     </Window.InputBindings>
     <DockPanel>

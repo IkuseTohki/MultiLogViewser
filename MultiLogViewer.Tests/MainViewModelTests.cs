@@ -23,6 +23,7 @@ namespace MultiLogViewer.Tests
         private Mock<IFilterPresetService> _mockFilterPresetService = null!;
         private Mock<IDispatcherService> _mockDispatcherService = null!;
         private Mock<ITaskRunner> _mockTaskRunner = null!;
+        private Mock<IGoToDateDialogService> _mockGoToDateDialogService = null!;
         private MainViewModel _viewModel = null!;
 
         [TestInitialize]
@@ -37,6 +38,7 @@ namespace MultiLogViewer.Tests
             _mockFilterPresetService = new Mock<IFilterPresetService>();
             _mockDispatcherService = new Mock<IDispatcherService>();
             _mockTaskRunner = new Mock<ITaskRunner>();
+            _mockGoToDateDialogService = new Mock<IGoToDateDialogService>();
 
             // Dispatcher: テストスレッドで即時実行
             _mockDispatcherService.Setup(d => d.Invoke(It.IsAny<Action>())).Callback<Action>(a => a());
@@ -61,7 +63,8 @@ namespace MultiLogViewer.Tests
                 _mockConfigPathResolver.Object,
                 _mockFilterPresetService.Object,
                 _mockDispatcherService.Object,
-                _mockTaskRunner.Object);
+                _mockTaskRunner.Object,
+                _mockGoToDateDialogService.Object);
         }
 
         [TestMethod]
@@ -603,6 +606,29 @@ namespace MultiLogViewer.Tests
 
             // Assert
             Assert.AreEqual(logs[0], _viewModel.SelectedLogEntry, "Should find the previous target.");
+        }
+
+        [TestMethod]
+        public async Task GoToDateCommand_AbsoluteJump_UpdatesSelection()
+        {
+            // Arrange
+            _viewModel = CreateViewModel();
+            var targetTime = new DateTime(2023, 12, 25, 10, 30, 0);
+            var targetEntry = new LogEntry { Timestamp = targetTime, Message = "Target" };
+            // Ensure logs are sorted ascending by timestamp for binary search
+            var logs = new List<LogEntry> { targetEntry, new LogEntry { Timestamp = DateTime.Now } };
+            await SetLogsToViewModel(_viewModel, logs);
+
+            Action<DateTime> capturedOnJump = null!;
+            _mockGoToDateDialogService.Setup(s => s.Show(It.IsAny<GoToDateViewModel>(), It.IsAny<Action<DateTime>>()))
+                .Callback<GoToDateViewModel, Action<DateTime>>((vm, onJump) => capturedOnJump = onJump);
+
+            // Act
+            _viewModel.GoToDateCommand.Execute(null);
+            capturedOnJump(targetTime);
+
+            // Assert
+            Assert.AreEqual(targetEntry, _viewModel.SelectedLogEntry);
         }
 
         private async Task SetLogsToViewModel(MainViewModel vm, List<LogEntry> logs)

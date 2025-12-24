@@ -182,5 +182,30 @@ namespace MultiLogViewer.Tests
 
             Assert.IsTrue(_searchService.ShouldHide(entry, new[] { filterDate, filterLevel }), "Should hide because of date filter.");
         }
+
+        [TestMethod]
+        public void FindByDateTime_BinarySearch_Works()
+        {
+            // Arrange
+            var logs = new List<LogEntry>
+            {
+                new LogEntry { Timestamp = new DateTime(2023, 1, 1, 10, 0, 0) },
+                new LogEntry { Timestamp = new DateTime(2023, 1, 1, 10, 10, 0) },
+                new LogEntry { Timestamp = new DateTime(2023, 1, 1, 10, 20, 0) }
+            };
+
+            // Act & Assert
+            // 1. ぴったり一致
+            Assert.AreEqual(logs[1], _searchService.FindByDateTime(logs, new DateTime(2023, 1, 1, 10, 10, 0)));
+
+            // 2. 中間の時刻（以降の最初のものを探す）
+            Assert.AreEqual(logs[2], _searchService.FindByDateTime(logs, new DateTime(2023, 1, 1, 10, 15, 0)));
+
+            // 3. 範囲より前（最初のものを探す）
+            Assert.AreEqual(logs[0], _searchService.FindByDateTime(logs, new DateTime(2023, 1, 1, 9, 0, 0)));
+
+            // 4. 範囲より後（最後のものを返す仕様）
+            Assert.AreEqual(logs[2], _searchService.FindByDateTime(logs, new DateTime(2023, 1, 1, 11, 0, 0)));
+        }
     }
 }

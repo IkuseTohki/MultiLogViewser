@@ -35,6 +35,7 @@ namespace MultiLogViewer
             services.AddSingleton<IFilterPresetService, FilterPresetService>();
             services.AddSingleton<IDispatcherService, WpfDispatcherService>();
             services.AddSingleton<ITaskRunner, TaskRunner>();
+            services.AddSingleton<IGoToDateDialogService, WpfGoToDateDialogService>();
 
             // ViewModels
             services.AddTransient(provider =>
@@ -47,7 +48,8 @@ namespace MultiLogViewer
                     provider.GetRequiredService<IConfigPathResolver>(),
                     provider.GetRequiredService<IFilterPresetService>(),
                     provider.GetRequiredService<IDispatcherService>(),
-                    provider.GetRequiredService<ITaskRunner>()));
+                    provider.GetRequiredService<ITaskRunner>(),
+                    provider.GetRequiredService<IGoToDateDialogService>()));
 
 
             // Main Window
