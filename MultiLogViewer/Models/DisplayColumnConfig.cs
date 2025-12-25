@@ -11,5 +11,8 @@ namespace MultiLogViewer.Models
 
         [YamlIgnore]
         public ColumnStyleConfig? StyleConfig { get; set; }
+
+        [YamlIgnore]
+        public bool IsBookmark { get; set; }
     }
 }

@@ -207,5 +207,46 @@ namespace MultiLogViewer.Tests
             // 4. 範囲より後（最後のものを返す仕様）
             Assert.AreEqual(logs[2], _searchService.FindByDateTime(logs, new DateTime(2023, 1, 1, 11, 0, 0)));
         }
+
+        [TestMethod]
+        public void ShouldHide_BookmarkFilter_NoColor_ShowsAllBookmarks()
+        {
+            // テスト観点: 色指定なし(null)のブックマークフィルタは、色に関わらず全てのブックマークを表示すること。
+            var entryRed = new LogEntry { IsBookmarked = true, BookmarkColor = BookmarkColor.Red };
+            var entryBlue = new LogEntry { IsBookmarked = true, BookmarkColor = BookmarkColor.Blue };
+            var entryNone = new LogEntry { IsBookmarked = false };
+
+            var filter = new BookmarkFilter(null); // All colors
+
+            Assert.IsFalse(_searchService.ShouldHide(entryRed, new[] { filter }), "Red bookmark should show");
+            Assert.IsFalse(_searchService.ShouldHide(entryBlue, new[] { filter }), "Blue bookmark should show");
+            Assert.IsTrue(_searchService.ShouldHide(entryNone, new[] { filter }), "Non-bookmarked should hide");
+        }
+
+        [TestMethod]
+        public void ShouldHide_CombinedWithBookmark_WorksCorrectly()
+        {
+            // テスト観点: ブックマーク色指定フィルタと、日時フィルタを組み合わせた場合に正しくAND条件で動作すること。
+            var targetTime = new DateTime(2023, 1, 1, 12, 0, 0);
+            var filterBookmark = new BookmarkFilter(BookmarkColor.Red);
+            var filterDate = new LogFilter(FilterType.DateTimeAfter, "", targetTime, "");
+            var filters = new LogFilter[] { filterBookmark, filterDate };
+
+            // 1. 両方満たす (Red & After) -> 表示 (False)
+            var entry1 = new LogEntry { IsBookmarked = true, BookmarkColor = BookmarkColor.Red, Timestamp = targetTime.AddHours(1) };
+            Assert.IsFalse(_searchService.ShouldHide(entry1, filters));
+
+            // 2. 色が違う (Blue & After) -> 非表示 (True)
+            var entry2 = new LogEntry { IsBookmarked = true, BookmarkColor = BookmarkColor.Blue, Timestamp = targetTime.AddHours(1) };
+            Assert.IsTrue(_searchService.ShouldHide(entry2, filters));
+
+            // 3. 日時が前 (Red & Before) -> 非表示 (True)
+            var entry3 = new LogEntry { IsBookmarked = true, BookmarkColor = BookmarkColor.Red, Timestamp = targetTime.AddHours(-1) };
+            Assert.IsTrue(_searchService.ShouldHide(entry3, filters));
+
+            // 4. ブックマークされていない -> 非表示 (True)
+            var entry4 = new LogEntry { IsBookmarked = false, BookmarkColor = BookmarkColor.Red, Timestamp = targetTime.AddHours(1) };
+            Assert.IsTrue(_searchService.ShouldHide(entry4, filters));
+        }
     }
 }

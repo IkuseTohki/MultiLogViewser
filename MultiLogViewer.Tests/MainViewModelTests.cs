@@ -42,6 +42,7 @@ namespace MultiLogViewer.Tests
 
             // Dispatcher: テストスレッドで即時実行
             _mockDispatcherService.Setup(d => d.Invoke(It.IsAny<Action>())).Callback<Action>(a => a());
+            _mockDispatcherService.Setup(d => d.BeginInvoke(It.IsAny<Action>())).Callback<Action>(a => a());
 
             // TaskRunner: テストスレッドで同期的に即時実行
             _mockTaskRunner.Setup(r => r.Run(It.IsAny<Action>()))
@@ -187,7 +188,9 @@ namespace MultiLogViewer.Tests
             // Assert
             Assert.AreEqual(1, _viewModel.LogEntriesView.Cast<LogEntry>().Count());
             Assert.AreEqual("Entry 1", _viewModel.LogEntriesView.Cast<LogEntry>().First().Message);
-            Assert.AreEqual(1, _viewModel.DisplayColumns.Count);
+            Assert.AreEqual(2, _viewModel.DisplayColumns.Count, "Should have 2 columns (Bookmark + Timestamp).");
+            Assert.IsTrue(_viewModel.DisplayColumns[0].IsBookmark, "First column should be the bookmark column.");
+            Assert.AreEqual("Timestamp", _viewModel.DisplayColumns[1].Header);
 
             _mockLogService.Verify(s => s.LoadFromConfig("dummy_path"), Times.Once);
         }
@@ -705,16 +708,61 @@ namespace MultiLogViewer.Tests
             _viewModel = CreateViewModel();
             var logs = new List<LogEntry>
             {
-                new LogEntry { Message = "1", IsBookmarked = true },
-                new LogEntry { Message = "2", IsBookmarked = true }
+                new LogEntry { Message = "1", IsBookmarked = true, BookmarkColor = BookmarkColor.Red },
+                new LogEntry { Message = "2", IsBookmarked = true, BookmarkColor = BookmarkColor.Blue }
             };
             await SetLogsToViewModel(_viewModel, logs);
+            _viewModel.SelectedLogEntry = logs[0];
 
             // Act
             _viewModel.ClearBookmarksCommand.Execute(null);
 
             // Assert
             Assert.IsFalse(logs.Any(l => l.IsBookmarked), "All bookmarks should be cleared.");
+            Assert.AreEqual(logs[0], _viewModel.SelectedLogEntry, "Selection should be maintained after clearing all bookmarks.");
+        }
+
+        [TestMethod]
+        public async Task ToggleBookmark_Unmarking_KeepsSelection()
+        {
+            // Arrange
+            _viewModel = CreateViewModel();
+            var logs = new List<LogEntry>
+            {
+                new LogEntry { Message = "1", IsBookmarked = true },
+                new LogEntry { Message = "2", IsBookmarked = true }
+            };
+            await SetLogsToViewModel(_viewModel, logs);
+            _viewModel.SelectedLogEntry = logs[0];
+
+            // Act
+            _viewModel.ToggleBookmarkCommand.Execute(null);
+
+            // Assert
+            Assert.IsFalse(logs[0].IsBookmarked, "Bookmark should be toggled off.");
+            Assert.AreEqual(logs[0], _viewModel.SelectedLogEntry, "Selection should not jump to another row after un-bookmarking.");
+        }
+
+        [TestMethod]
+        public void SavePresetCommand_ExcludesBookmarkFilters()
+        {
+            // Arrange
+            _viewModel = CreateViewModel();
+            _viewModel.FilterText = "Test";
+            _viewModel.ActiveExtensionFilters.Add(new LogFilter(FilterType.ColumnEmpty, "Key", default, "Key"));
+            _viewModel.ActiveExtensionFilters.Add(new BookmarkFilter(BookmarkColor.Red));
+
+            _mockUserDialogService.Setup(s => s.SaveFileDialog(It.IsAny<string>(), It.IsAny<string>())).Returns("preset.yaml");
+
+            // Act
+            _viewModel.SavePresetCommand.Execute(null);
+
+            // Assert
+            // Serviceに渡されるリストに、Bookmarkタイプのフィルタが含まれていないことを検証
+            _mockFilterPresetService.Verify(s => s.Save("preset.yaml", It.Is<FilterPreset>(p =>
+                p.ExtensionFilters.Count == 1 &&
+                p.ExtensionFilters.All(f => f.Type != FilterType.Bookmark))),
+                Times.Once);
         }
 
         [TestMethod]
@@ -758,6 +806,46 @@ namespace MultiLogViewer.Tests
             var bookmarkFilters = _viewModel.ActiveExtensionFilters.Where(f => f.Type == FilterType.Bookmark).ToList();
             Assert.AreEqual(1, bookmarkFilters.Count, "Should add only one bookmark filter even if executed multiple times.");
             Assert.AreEqual("Bookmark", bookmarkFilters[0].DisplayText);
+        }
+
+        [TestMethod]
+        public async Task SetBookmarkColorCommand_ChangesColorAndSetsBookmarked()
+        {
+            // Arrange
+            _viewModel = CreateViewModel();
+            var entry = new LogEntry { Message = "Test", IsBookmarked = false, BookmarkColor = BookmarkColor.Blue };
+            await SetLogsToViewModel(_viewModel, new List<LogEntry> { entry });
+            _viewModel.SelectedLogEntry = entry;
+
+            // Act
+            // コマンド引数として BookmarkColor.Red を渡す
+            _viewModel.SetBookmarkColorCommand.Execute(BookmarkColor.Red);
+
+            // Assert
+            Assert.IsTrue(entry.IsBookmarked, "Should automatically set IsBookmarked to true.");
+            Assert.AreEqual(BookmarkColor.Red, entry.BookmarkColor, "Should update BookmarkColor.");
+        }
+
+        [TestMethod]
+        public async Task AddBookmarkFilterCommand_WithColor_ReplacesExistingBookmarkFilter()
+        {
+            // Arrange
+            _viewModel = CreateViewModel();
+            await SetLogsToViewModel(_viewModel, new List<LogEntry>());
+
+            // Act 1: Add Red filter
+            _viewModel.AddBookmarkFilterCommand.Execute(BookmarkColor.Red);
+
+            var filters1 = _viewModel.ActiveExtensionFilters.Where(f => f.Type == FilterType.Bookmark).Cast<BookmarkFilter>().ToList();
+            Assert.AreEqual(1, filters1.Count);
+            Assert.AreEqual(BookmarkColor.Red, filters1[0].TargetColor);
+
+            // Act 2: Add Blue filter (should replace Red)
+            _viewModel.AddBookmarkFilterCommand.Execute(BookmarkColor.Blue);
+
+            var filters2 = _viewModel.ActiveExtensionFilters.Where(f => f.Type == FilterType.Bookmark).Cast<BookmarkFilter>().ToList();
+            Assert.AreEqual(1, filters2.Count, "Should maintain only one bookmark filter.");
+            Assert.AreEqual(BookmarkColor.Blue, filters2[0].TargetColor, "Should replace with Blue filter.");
         }
 
         private async Task SetLogsToViewModel(MainViewModel vm, List<LogEntry> logs)

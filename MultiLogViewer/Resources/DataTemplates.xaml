@@ -25,4 +25,34 @@
         </Grid>
     </DataTemplate>
 
+    <!-- 共通のブックマークアイコンテンプレート -->
+    <DataTemplate x:Key="BookmarkIconTemplate">
+        <Path Width="10"
+              Height="10"
+              Data="{StaticResource BookmarkIconGeometry}"
+              Stretch="Uniform"
+              Visibility="{Binding IsBookmarked, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Path.Style>
+                <Style TargetType="Path">
+                    <Setter Property="Fill" Value="#64B5F6" />
+                    <!-- Default: Blue -->
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding BookmarkColor}" Value="Red">
+                            <Setter Property="Fill" Value="#E57373" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding BookmarkColor}" Value="Green">
+                            <Setter Property="Fill" Value="#81C784" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding BookmarkColor}" Value="Yellow">
+                            <Setter Property="Fill" Value="#FFF176" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding BookmarkColor}" Value="Blue">
+                            <Setter Property="Fill" Value="#64B5F6" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Path.Style>
+        </Path>
+    </DataTemplate>
+
 </ResourceDictionary>

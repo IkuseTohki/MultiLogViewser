@@ -86,6 +86,7 @@ namespace MultiLogViewer.ViewModels
         public ICollectionView BookmarkedEntries { get; }
 
         private SearchViewModel? _searchViewModel;
+        private DigestWindow? _digestWindow;
 
         private bool _isDetailPanelVisible = false;
         public bool IsDetailPanelVisible
@@ -130,6 +131,7 @@ namespace MultiLogViewer.ViewModels
         public ICommand PreviousBookmarkCommand { get; }
         public ICommand ClearBookmarksCommand { get; }
         public ICommand AddBookmarkFilterCommand { get; }
+        public ICommand SetBookmarkColorCommand { get; }
         public ICommand ToggleBookmarkPanelCommand { get; }
         public ICommand ToggleDetailPanelCommand { get; }
         public ICommand OpenDigestCommand { get; }
@@ -194,10 +196,11 @@ namespace MultiLogViewer.ViewModels
             CopyCommand = new RelayCommand(_ => CopySelectedLogEntry());
             GoToDateCommand = new RelayCommand(_ => OpenGoToDateDialog());
             ToggleBookmarkCommand = new RelayCommand(_ => ToggleBookmark());
+            SetBookmarkColorCommand = new RelayCommand(param => SetBookmarkColor(param));
             NextBookmarkCommand = new RelayCommand(_ => NavigateBookmark(true));
             PreviousBookmarkCommand = new RelayCommand(_ => NavigateBookmark(false));
             ClearBookmarksCommand = new RelayCommand(_ => ClearBookmarks());
-            AddBookmarkFilterCommand = new RelayCommand(_ => AddBookmarkFilter());
+            AddBookmarkFilterCommand = new RelayCommand(param => AddBookmarkFilter(param));
             ToggleBookmarkPanelCommand = new RelayCommand(_ => IsBookmarkPanelVisible = !IsBookmarkPanelVisible);
             ToggleDetailPanelCommand = new RelayCommand(_ => IsDetailPanelVisible = !IsDetailPanelVisible);
             OpenDigestCommand = new RelayCommand(_ => OpenDigest());
@@ -209,7 +212,22 @@ namespace MultiLogViewer.ViewModels
             LoadPresetCommand = new RelayCommand(_ => LoadPreset());
             ClearFilterCommand = new RelayCommand(_ => FilterText = string.Empty);
 
-            _activeExtensionFilters.CollectionChanged += (s, e) => LogEntriesView.Refresh();
+            _activeExtensionFilters.CollectionChanged += (s, e) =>
+            {
+                // 非同期に実行することで、一連のコレクション操作が完了した後に Refresh が走るようにする。
+                // これにより DataGrid の内部状態との競合によるクラッシュを防止する。
+                _dispatcherService.BeginInvoke(() =>
+                {
+                    try
+                    {
+                        LogEntriesView.Refresh();
+                    }
+                    catch
+                    {
+                        // Refresh 中の例外は握り潰してクラッシュを回避
+                    }
+                });
+            };
 
             _tailTimer = new System.Windows.Threading.DispatcherTimer();
             _tailTimer.Tick += TailTimer_Tick;
@@ -225,7 +243,9 @@ namespace MultiLogViewer.ViewModels
                 var preset = new FilterPreset
                 {
                     FilterText = FilterText,
-                    ExtensionFilters = _activeExtensionFilters.ToList()
+                    ExtensionFilters = _activeExtensionFilters
+                        .Where(f => f.Type != FilterType.Bookmark) // ブックマークフィルタは保存しない
+                        .ToList()
                 };
                 _filterPresetService.Save(path, preset);
             }
@@ -249,6 +269,12 @@ namespace MultiLogViewer.ViewModels
                 _activeExtensionFilters.Clear();
                 foreach (var filter in preset.ExtensionFilters)
                 {
+                    // ブックマークフィルタは読み込まない（保存もしない運用だが、念のため除外）
+                    if (filter.Type == FilterType.Bookmark)
+                    {
+                        continue;
+                    }
+
                     // カラムフィルターの場合、現在利用可能なキーに含まれている場合のみ登録する
                     if (filter.Type == FilterType.ColumnEmpty)
                     {
@@ -342,52 +368,11 @@ namespace MultiLogViewer.ViewModels
             var values = new List<string>();
             foreach (var column in DisplayColumns)
             {
-                values.Add(GetColumnValue(SelectedLogEntry, column.BindingPath, column.StringFormat));
+                values.Add(LogEntryValueConverter.GetStringValue(SelectedLogEntry, column));
             }
 
             var textToCopy = string.Join("\t", values);
             _clipboardService.SetText(textToCopy);
-        }
-
-        private string GetColumnValue(LogEntry entry, string bindingPath, string? format)
-        {
-            if (string.IsNullOrEmpty(bindingPath)) return string.Empty;
-
-            object? rawValue = null;
-
-            if (bindingPath == "Timestamp")
-            {
-                rawValue = entry.Timestamp;
-            }
-            else if (bindingPath == "Message")
-            {
-                rawValue = entry.Message;
-            }
-            else if (bindingPath == "FileName")
-            {
-                rawValue = entry.FileName;
-            }
-            else if (bindingPath == "LineNumber")
-            {
-                rawValue = entry.LineNumber;
-            }
-            else if (bindingPath.StartsWith("AdditionalData[") && bindingPath.EndsWith("]"))
-            {
-                var key = bindingPath.Substring(15, bindingPath.Length - 16);
-                if (entry.AdditionalData.TryGetValue(key, out var val))
-                {
-                    rawValue = val;
-                }
-            }
-
-            if (rawValue == null) return string.Empty;
-
-            if (!string.IsNullOrEmpty(format))
-            {
-                return string.Format(System.Globalization.CultureInfo.InvariantCulture, $"{{0:{format}}}", rawValue);
-            }
-
-            return rawValue.ToString() ?? string.Empty;
         }
 
         private void OpenGoToDateDialog()
@@ -420,8 +405,17 @@ namespace MultiLogViewer.ViewModels
         {
             if (SelectedLogEntry != null)
             {
-                SelectedLogEntry.IsBookmarked = !SelectedLogEntry.IsBookmarked;
+                var current = SelectedLogEntry;
+                current.IsBookmarked = !current.IsBookmarked;
+
+                // サイドパネルのリストを更新（除外される可能性がある）
                 BookmarkedEntries.Refresh();
+
+                // サイドパネルの ListBox が選択を勝手に変えてしまった場合、元の選択を復元する
+                if (SelectedLogEntry != current)
+                {
+                    SelectedLogEntry = current;
+                }
             }
         }
 
@@ -459,24 +453,69 @@ namespace MultiLogViewer.ViewModels
 
         private void ClearBookmarks()
         {
+            var current = SelectedLogEntry;
             foreach (var entry in _logEntries)
             {
                 entry.IsBookmarked = false;
             }
             BookmarkedEntries.Refresh();
+
+            // 選択行を維持
+            if (current != null)
+            {
+                SelectedLogEntry = current;
+            }
         }
 
-        private void AddBookmarkFilter()
+        private void SetBookmarkColor(object? param)
         {
-            var newFilter = new BookmarkFilter();
-            if (!_activeExtensionFilters.Contains(newFilter))
+            if (SelectedLogEntry != null && param is BookmarkColor color)
             {
-                _activeExtensionFilters.Add(newFilter);
+                var current = SelectedLogEntry;
+                current.BookmarkColor = color;
+                current.IsBookmarked = true;
+
+                BookmarkedEntries.Refresh();
+
+                // 選択行を維持
+                if (SelectedLogEntry != current)
+                {
+                    SelectedLogEntry = current;
+                }
             }
+        }
+
+        private void AddBookmarkFilter(object? param)
+        {
+            BookmarkColor? targetColor = null;
+            if (param is BookmarkColor color)
+            {
+                targetColor = color;
+            }
+
+            var newFilter = new BookmarkFilter(targetColor);
+
+            // 既存のブックマークフィルタがあれば削除（排他制御）
+            var existing = _activeExtensionFilters.FirstOrDefault(f => f.Type == FilterType.Bookmark);
+            if (existing != null)
+            {
+                _activeExtensionFilters.Remove(existing);
+            }
+            _activeExtensionFilters.Add(newFilter);
         }
 
         private void OpenDigest()
         {
+            if (_digestWindow != null)
+            {
+                if (_digestWindow.WindowState == System.Windows.WindowState.Minimized)
+                {
+                    _digestWindow.WindowState = System.Windows.WindowState.Normal;
+                }
+                _digestWindow.Activate();
+                return;
+            }
+
             var bookmarked = _logEntries.Where(e => e.IsBookmarked).ToList();
             if (!bookmarked.Any())
             {
@@ -485,12 +524,13 @@ namespace MultiLogViewer.ViewModels
             }
 
             var digestVm = new DigestViewModel(bookmarked);
-            var window = new DigestWindow
+            _digestWindow = new DigestWindow
             {
                 DataContext = digestVm,
                 Owner = System.Windows.Application.Current.MainWindow
             };
-            window.Show();
+            _digestWindow.Closed += (s, e) => _digestWindow = null;
+            _digestWindow.Show();
         }
 
         private void OpenSearch()
@@ -608,7 +648,19 @@ namespace MultiLogViewer.ViewModels
                     // DisplayColumns を設定
                     if (result.DisplayColumns != null && result.DisplayColumns.Any())
                     {
-                        DisplayColumns = new ObservableCollection<DisplayColumnConfig>(result.DisplayColumns);
+                        var columns = new List<DisplayColumnConfig>();
+
+                        // ブックマーク列を先頭に追加
+                        columns.Add(new DisplayColumnConfig
+                        {
+                            Header = "",
+                            Width = 22,
+                            IsBookmark = true
+                        });
+
+                        columns.AddRange(result.DisplayColumns);
+
+                        DisplayColumns = new ObservableCollection<DisplayColumnConfig>(columns);
                     }
 
                     // エントリを一括でコレクションに追加 (RangeObservableCollectionを使用)
@@ -640,20 +692,28 @@ namespace MultiLogViewer.ViewModels
         {
             if (obj is LogEntry entry)
             {
-                // 拡張フィルターによる非表示判定
-                if (_logSearchService.ShouldHide(entry, _activeExtensionFilters))
+                try
                 {
-                    return false;
-                }
+                    // 拡張フィルターによる非表示判定
+                    if (_logSearchService.ShouldHide(entry, _activeExtensionFilters))
+                    {
+                        return false;
+                    }
 
-                // キーワードフィルタによる判定
-                if (string.IsNullOrWhiteSpace(FilterText))
+                    // キーキーワードフィルタによる判定
+                    if (string.IsNullOrWhiteSpace(FilterText))
+                    {
+                        return true;
+                    }
+
+                    var criteria = new SearchCriteria(FilterText, false, false);
+                    return _logSearchService.IsMatch(entry, criteria);
+                }
+                catch
                 {
+                    // フィルタリング処理中の予期せぬエラー（不整合等）が発生した場合は表示対象とする
                     return true;
                 }
-
-                var criteria = new SearchCriteria(FilterText, false, false);
-                return _logSearchService.IsMatch(entry, criteria);
             }
             return false;
         }

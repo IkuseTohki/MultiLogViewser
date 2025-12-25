@@ -13,13 +13,6 @@
         Height="600"
         Background="{StaticResource WindowBackgroundBrush}"
         mc:Ignorable="d">
-    <Window.Resources>
-        <ResourceDictionary>
-            <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="Resources/Styles/BadgeStyles.xaml" />
-            </ResourceDictionary.MergedDictionaries>
-        </ResourceDictionary>
-    </Window.Resources>
     <Window.InputBindings>
         <KeyBinding Key="F"
                     Command="{Binding OpenSearchCommand}"
@@ -73,7 +66,51 @@
                                             </Style>
                                         </MenuItem.ItemContainerStyle>
                                     </MenuItem>
-                                    <MenuItem Command="{Binding AddBookmarkFilterCommand}" Header="Bookmarkフィルターを追加" />
+                                    <MenuItem Header="Bookmarkフィルターを追加">
+                                        <MenuItem Command="{Binding AddBookmarkFilterCommand}" Header="すべて (All)">
+                                            <MenuItem.Icon>
+                                                <Rectangle Width="12"
+                                                           Height="12"
+                                                           Fill="Black" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Command="{Binding AddBookmarkFilterCommand}"
+                                                  CommandParameter="{x:Static models:BookmarkColor.Red}"
+                                                  Header="Red">
+                                            <MenuItem.Icon>
+                                                <Rectangle Width="12"
+                                                           Height="12"
+                                                           Fill="#E57373" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Command="{Binding AddBookmarkFilterCommand}"
+                                                  CommandParameter="{x:Static models:BookmarkColor.Blue}"
+                                                  Header="Blue">
+                                            <MenuItem.Icon>
+                                                <Rectangle Width="12"
+                                                           Height="12"
+                                                           Fill="#64B5F6" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Command="{Binding AddBookmarkFilterCommand}"
+                                                  CommandParameter="{x:Static models:BookmarkColor.Green}"
+                                                  Header="Green">
+                                            <MenuItem.Icon>
+                                                <Rectangle Width="12"
+                                                           Height="12"
+                                                           Fill="#81C784" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Command="{Binding AddBookmarkFilterCommand}"
+                                                  CommandParameter="{x:Static models:BookmarkColor.Yellow}"
+                                                  Header="Yellow">
+                                            <MenuItem.Icon>
+                                                <Rectangle Width="12"
+                                                           Height="12"
+                                                           Fill="#FFF176" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                    </MenuItem>
                                     <Separator />
                                     <MenuItem Command="{Binding SavePresetCommand}" Header="フィルターを保存..." />
                                     <MenuItem Command="{Binding LoadPresetCommand}" Header="フィルターを読み込む..." />
@@ -249,6 +286,7 @@
                           behaviors:DataGridTailBehavior.MonitorScroll="True"
                           CanUserReorderColumns="True"
                           CanUserResizeColumns="True"
+                          HeadersVisibility="Column"
                           ItemsSource="{Binding LogEntriesView}"
                           SelectedItem="{Binding SelectedLogEntry, Mode=TwoWay}" />
 
@@ -398,19 +436,89 @@
                         </Button>
                     </Grid>
 
-                    <!-- Memo Editor -->
-                    <StackPanel Grid.Row="1"
-                                Margin="0,0,0,10"
-                                Visibility="{Binding SelectedLogEntry.IsBookmarked, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <TextBlock FontSize="10"
-                                   Foreground="Gray"
-                                   Text="MEMO FOR SELECTED" />
-                        <TextBox Margin="0,2,0,0"
+                    <!-- Memo & Color Editor (Shared Area) -->
+                    <Grid Grid.Row="1"
+                          Margin="0,0,0,10"
+                          Visibility="{Binding SelectedLogEntry.IsBookmarked, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="24" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Color Palette Icon and chips -->
+                        <Path Grid.Row="0"
+                              Grid.Column="0"
+                              Width="14"
+                              Height="14"
+                              Margin="0,0,0,5"
+                              Data="{StaticResource PaletteIconGeometry}"
+                              Fill="Gray"
+                              Stretch="Uniform" />
+                        <StackPanel Grid.Row="0"
+                                    Grid.Column="1"
+                                    Margin="8,0,0,5"
+                                    Orientation="Horizontal">
+                            <StackPanel.Resources>
+                                <Style x:Key="ColorChipStyle" TargetType="Button">
+                                    <Setter Property="Width" Value="14" />
+                                    <Setter Property="Height" Value="14" />
+                                    <Setter Property="Margin" Value="0,0,8,0" />
+                                    <Setter Property="BorderThickness" Value="0" />
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border Width="{TemplateBinding Width}"
+                                                        Height="{TemplateBinding Height}"
+                                                        Background="{TemplateBinding Background}"
+                                                        CornerRadius="7" />
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </StackPanel.Resources>
+
+                            <Button Background="#64B5F6"
+                                    Command="{Binding DataContext.SetBookmarkColorCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    CommandParameter="{x:Static models:BookmarkColor.Blue}"
+                                    Style="{StaticResource ColorChipStyle}"
+                                    ToolTip="Blue" />
+                            <Button Background="#E57373"
+                                    Command="{Binding DataContext.SetBookmarkColorCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    CommandParameter="{x:Static models:BookmarkColor.Red}"
+                                    Style="{StaticResource ColorChipStyle}"
+                                    ToolTip="Red" />
+                            <Button Background="#81C784"
+                                    Command="{Binding DataContext.SetBookmarkColorCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    CommandParameter="{x:Static models:BookmarkColor.Green}"
+                                    Style="{StaticResource ColorChipStyle}"
+                                    ToolTip="Green" />
+                            <Button Background="#FFF176"
+                                    Command="{Binding DataContext.SetBookmarkColorCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    CommandParameter="{x:Static models:BookmarkColor.Yellow}"
+                                    Style="{StaticResource ColorChipStyle}"
+                                    ToolTip="Yellow" />
+                        </StackPanel>
+
+                        <!-- Memo Icon and text box -->
+                        <Path Grid.Row="1"
+                              Grid.Column="0"
+                              Width="14"
+                              Height="14"
+                              Data="{StaticResource MemoIconGeometry}"
+                              Fill="Gray"
+                              Stretch="Uniform" />
+                        <TextBox Grid.Row="1"
+                                 Grid.Column="1"
+                                 Margin="0,0,0,0"
                                  Padding="3"
                                  AcceptsReturn="False"
                                  FontSize="11"
                                  Text="{Binding SelectedLogEntry.BookmarkMemo, UpdateSourceTrigger=PropertyChanged}" />
-                    </StackPanel>
+                    </Grid>
 
                     <!-- List -->
                     <ListBox Grid.Row="2"
@@ -425,13 +533,11 @@
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
-                                    <Path Width="8"
-                                          Height="10"
-                                          Margin="0,0,5,0"
-                                          VerticalAlignment="Top"
-                                          Data="{StaticResource BookmarkIconGeometry}"
-                                          Fill="{StaticResource PrimaryHueMidBrush}"
-                                          Stretch="Uniform" />
+                                    <ContentPresenter Grid.Column="0"
+                                                      Margin="0,2,5,0"
+                                                      VerticalAlignment="Top"
+                                                      Content="{Binding}"
+                                                      ContentTemplate="{StaticResource BookmarkIconTemplate}" />
                                     <StackPanel Grid.Column="1">
                                         <TextBlock FontSize="10"
                                                    Foreground="DimGray"

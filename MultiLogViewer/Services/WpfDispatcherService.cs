@@ -13,11 +13,18 @@ namespace MultiLogViewer.Services
             }
             else
             {
-                // Application.Current が null の場合（テスト時など）、
-                // または Dispatcher が利用できない場合は、
-                // 同期的に実行するか、何もしないかを決める必要があります。
-                // テスト時にモックを使わずにここを通るケースを考慮し、
-                // そのまま実行してしまいます（コンソールアプリ的な挙動）。
+                action();
+            }
+        }
+
+        public void BeginInvoke(Action action)
+        {
+            if (Application.Current?.Dispatcher != null)
+            {
+                Application.Current.Dispatcher.BeginInvoke(action);
+            }
+            else
+            {
                 action();
             }
         }

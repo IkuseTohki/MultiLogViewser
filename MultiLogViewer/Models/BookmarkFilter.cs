@@ -8,10 +8,12 @@ namespace MultiLogViewer.Models
     /// </summary>
     public class BookmarkFilter : LogFilter
     {
-        public BookmarkFilter() : base(FilterType.Bookmark, "", default, "Bookmark")
-        {
-        }
+        public BookmarkColor? TargetColor { get; }
 
-        // ラベル機能追加時に色などの情報をここに追加可能
+        public BookmarkFilter(BookmarkColor? targetColor = null)
+            : base(FilterType.Bookmark, "", default, "Bookmark")
+        {
+            TargetColor = targetColor;
+        }
     }
 }

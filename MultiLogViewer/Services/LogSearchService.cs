@@ -94,12 +94,12 @@ namespace MultiLogViewer.Services
 
         public bool ShouldHide(LogEntry entry, IEnumerable<LogFilter> filters)
         {
-            if (filters == null || !filters.Any()) return false;
+            if (entry == null || filters == null || !filters.Any()) return false;
 
             // 1. カラムフィルター（空チェック）の判定
             // 全ての指定項目が空の場合にのみ非表示とするため、項目を抽出して一括判定する
-            var columnKeys = filters.Where(f => f.Type == FilterType.ColumnEmpty).Select(f => f.Key).ToList();
-            if (columnKeys.Any())
+            var columnKeys = filters.Where(f => f != null && f.Type == FilterType.ColumnEmpty).Select(f => f.Key).ToList();
+            if (columnKeys.Any() && entry.AdditionalData != null)
             {
                 bool allEmpty = true;
                 foreach (var key in columnKeys)
@@ -113,9 +113,11 @@ namespace MultiLogViewer.Services
                 if (allEmpty) return true; // 全て空なので非表示
             }
 
-            // 2. 日時フィルターの判定
+            // 2. その他のフィルター判定
             foreach (var filter in filters)
             {
+                if (filter == null) continue;
+
                 if (filter.Type == FilterType.DateTimeAfter)
                 {
                     if (entry.Timestamp < filter.Value) return true; // 指定より前なので非表示
@@ -127,6 +129,15 @@ namespace MultiLogViewer.Services
                 else if (filter.Type == FilterType.Bookmark)
                 {
                     if (!entry.IsBookmarked) return true; // ブックマークされていないので非表示
+
+                    // 色指定がある場合はチェック
+                    if (filter is BookmarkFilter bf)
+                    {
+                        if (bf.TargetColor.HasValue && entry.BookmarkColor != bf.TargetColor.Value)
+                        {
+                            return true; // 色が指定されているが一致しないので非表示
+                        }
+                    }
                 }
             }
 

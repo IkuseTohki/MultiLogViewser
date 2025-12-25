@@ -6,11 +6,19 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="Resources/Icons.xaml" />
+                <!--
+                    【重要】リソースのマージ順序について
+                    StaticResource を用いた依存関係があるため、読み込み順序は重要です。
+                    1. 基本要素 (Colors, Icons, Converters)
+                    2. 基盤スタイル (DefaultStyles): 他のスタイルやテンプレートから参照される
+                    3. 応用要素 (DataTemplates, BadgeStyles): 基盤スタイルを StaticResource として使用する
+                -->
                 <ResourceDictionary Source="Resources/Colors.xaml" />
+                <ResourceDictionary Source="Resources/Icons.xaml" />
                 <ResourceDictionary Source="Resources/Converters.xaml" />
-                <ResourceDictionary Source="Resources/DataTemplates.xaml" />
                 <ResourceDictionary Source="Resources/Styles/DefaultStyles.xaml" />
+                <ResourceDictionary Source="Resources/DataTemplates.xaml" />
+                <ResourceDictionary Source="Resources/Styles/BadgeStyles.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

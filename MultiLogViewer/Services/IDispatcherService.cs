@@ -12,5 +12,11 @@ namespace MultiLogViewer.Services
         /// </summary>
         /// <param name="action">実行するアクション。</param>
         void Invoke(Action action);
+
+        /// <summary>
+        /// 指定されたアクションを UI スレッドで非同期に実行します。
+        /// </summary>
+        /// <param name="action">実行するアクション。</param>
+        void BeginInvoke(Action action);
     }
 }

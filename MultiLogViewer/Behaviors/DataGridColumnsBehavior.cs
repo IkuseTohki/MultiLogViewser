@@ -1,16 +1,21 @@
 using MultiLogViewer.Models;
+using MultiLogViewer.ViewModels;
 using MultiLogViewer.ViewModels.Converters;
+using MultiLogViewer.Utils;
 using System;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace MultiLogViewer.Behaviors
 {
+    /// <summary>
+    /// DataGrid の列を動的に生成するための添付プロパティを提供する挙動クラスです。
+    /// </summary>
     public static class DataGridColumnsBehavior
     {
         public static readonly DependencyProperty BindableColumnsProperty =
@@ -44,189 +49,236 @@ namespace MultiLogViewer.Behaviors
                     newCollection.CollectionChanged += (sender, args) => OnCollectionChanged(sender, args, dataGrid);
                 }
 
-                // Initial population of columns
                 GenerateColumns(dataGrid, e.NewValue as ObservableCollection<DisplayColumnConfig>);
             }
         }
 
         private static void OnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e, DataGrid dataGrid)
         {
-            // Regenerate columns when the collection changes
             GenerateColumns(dataGrid, sender as ObservableCollection<DisplayColumnConfig>);
         }
 
+        /// <summary>
+        /// 設定に基づいて DataGrid の列を再生成します。
+        /// </summary>
         private static void GenerateColumns(DataGrid dataGrid, ObservableCollection<DisplayColumnConfig>? columns)
         {
             dataGrid.Columns.Clear();
-            if (columns == null)
+            if (columns == null) return;
+
+            foreach (var config in columns)
             {
-                return;
-            }
+                DataGridColumn column = CreateColumn(dataGrid, config);
 
-            foreach (var columnConfig in columns)
-            {
-                DataGridColumn newColumn;
+                // 共通のスタイル適用 (背景色、文字色、太字)
+                ApplyColumnStyle(column, config);
 
-                if (columnConfig.BindingPath == "Message")
-                {
-                    // Message列の場合はテンプレートを使用（1行表示 + アイコン）
-                    var template = dataGrid.TryFindResource("MultilineMessageTemplate") as DataTemplate;
-                    if (template != null)
-                    {
-                        newColumn = new DataGridTemplateColumn
-                        {
-                            Header = columnConfig.Header,
-                            Width = new DataGridLength(columnConfig.Width),
-                            MinWidth = columnConfig.Width,
-                            CellTemplate = template,
-                            SortMemberPath = columnConfig.BindingPath
-                        };
-                    }
-                    else
-                    {
-                        newColumn = CreateTextColumn(columnConfig);
-                    }
-                }
-                else
-                {
-                    newColumn = CreateTextColumn(columnConfig);
-                }
+                // ヘッダーのコンテキストメニュー (拡張フィルター用)
+                ApplyHeaderContextMenu(dataGrid, column, config);
 
-                // --- スタイル設定 (CellStyle) ---
-                if (columnConfig.StyleConfig != null)
-                {
-                    // 既存のCellStyleがあればそれをベースにする（Timestamp列で作成済みの場合など）
-                    var cellStyle = newColumn.CellStyle ?? new Style(typeof(DataGridCell));
-
-                    // Background
-                    var bgBinding = new Binding(columnConfig.BindingPath)
-                    {
-                        Converter = new CellStyleConverter { StyleConfig = columnConfig.StyleConfig },
-                        ConverterParameter = "Background"
-                    };
-                    cellStyle.Setters.Add(new Setter(DataGridCell.BackgroundProperty, bgBinding));
-
-                    // Foreground
-                    var fgBinding = new Binding(columnConfig.BindingPath)
-                    {
-                        Converter = new CellStyleConverter { StyleConfig = columnConfig.StyleConfig },
-                        ConverterParameter = "Foreground"
-                    };
-                    cellStyle.Setters.Add(new Setter(DataGridCell.ForegroundProperty, fgBinding));
-
-                    // FontWeight
-                    var fwBinding = new Binding(columnConfig.BindingPath)
-                    {
-                        Converter = new CellStyleConverter { StyleConfig = columnConfig.StyleConfig },
-                        ConverterParameter = "FontWeight"
-                    };
-                    cellStyle.Setters.Add(new Setter(DataGridCell.FontWeightProperty, fwBinding));
-
-                    newColumn.CellStyle = cellStyle;
-                }
-
-                // --- ヘッダーメニューの設定 (カラムフィルター) ---
-                var keyName = ExtractKeyFromBindingPath(columnConfig.BindingPath);
-                if (!string.IsNullOrEmpty(keyName))
-                {
-                    var headerMenu = new ContextMenu();
-                    var headerItem = new MenuItem
-                    {
-                        Header = "拡張フィルターに追加",
-                        Command = (dataGrid.DataContext as dynamic)?.AddExtensionFilterCommand,
-                        CommandParameter = keyName
-                    };
-                    headerMenu.Items.Add(headerItem);
-
-                    // 既存のヘッダースタイルを継承しつつContextMenuを追加
-                    var baseHeaderStyle = Application.Current.FindResource(typeof(System.Windows.Controls.Primitives.DataGridColumnHeader)) as Style;
-                    var headerStyle = new Style(typeof(System.Windows.Controls.Primitives.DataGridColumnHeader), baseHeaderStyle);
-                    headerStyle.Setters.Add(new Setter(FrameworkElement.ContextMenuProperty, headerMenu));
-                    newColumn.HeaderStyle = headerStyle;
-                }
-
-                // --- セルメニューの設定 (日時フィルターなど) ---
-                if (columnConfig.BindingPath == "Timestamp")
-                {
-                    // もしスタイル設定ですでにCellStyleが作られていたらそれを使う
-                    var cellStyle = newColumn.CellStyle ?? new Style(typeof(DataGridCell));
-                    var contextMenu = new ContextMenu();
-
-                    var afterItem = new MenuItem { Header = "この日時以降をフィルターに追加" };
-                    // SourceにdataGridを直接指定することで確実にViewModelのコマンドにバインドする
-                    afterItem.SetBinding(MenuItem.CommandProperty, new Binding("DataContext.AddDateTimeFilterCommand") { Source = dataGrid });
-                    afterItem.SetBinding(MenuItem.CommandParameterProperty, new Binding(".") { Converter = new DateTimeFilterConverter(), ConverterParameter = true });
-                    contextMenu.Items.Add(afterItem);
-
-                    var beforeItem = new MenuItem { Header = "この日時以前をフィルターに追加" };
-                    beforeItem.SetBinding(MenuItem.CommandProperty, new Binding("DataContext.AddDateTimeFilterCommand") { Source = dataGrid });
-                    beforeItem.SetBinding(MenuItem.CommandParameterProperty, new Binding(".") { Converter = new DateTimeFilterConverter(), ConverterParameter = false });
-                    contextMenu.Items.Add(beforeItem);
-
-                    // ContextMenuPropertyを上書きせず、Settersに追加する
-                    bool hasContextMenuSetter = false;
-                    foreach (Setter s in cellStyle.Setters)
-                    {
-                        if (s.Property == DataGridCell.ContextMenuProperty) { hasContextMenuSetter = true; break; }
-                    }
-                    if (!hasContextMenuSetter)
-                    {
-                        cellStyle.Setters.Add(new Setter(DataGridCell.ContextMenuProperty, contextMenu));
-                    }
-
-                    newColumn.CellStyle = cellStyle;
-                }
-
-                dataGrid.Columns.Add(newColumn);
+                dataGrid.Columns.Add(column);
             }
         }
 
-        // セルのデータ（LogEntry）から特定の値（DateTime）を取り出し、フラグとセットでValueTupleにするための内部コンバーター
-        private class DateTimeFilterConverter : IValueConverter
+        /// <summary>
+        /// 列の種類に応じた DataGridColumn を生成します。
+        /// </summary>
+        private static DataGridColumn CreateColumn(DataGrid dataGrid, DisplayColumnConfig config)
         {
-            public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+            if (config.IsBookmark)
             {
-                if (value is LogEntry entry && parameter is bool isAfter)
-                {
-                    return (entry.Timestamp, isAfter);
-                }
-                return null!;
+                return CreateBookmarkColumn(dataGrid, config);
             }
-            public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture) => throw new NotImplementedException();
+
+            if (config.BindingPath == "Message")
+            {
+                return CreateMessageColumn(dataGrid, config);
+            }
+
+            if (config.BindingPath == "Timestamp")
+            {
+                return CreateTimestampColumn(dataGrid, config);
+            }
+
+            return CreateStandardTextColumn(config);
         }
 
-        private static string? ExtractKeyFromBindingPath(string bindingPath)
+        private static DataGridColumn CreateBookmarkColumn(DataGrid dataGrid, DisplayColumnConfig config)
         {
-            if (string.IsNullOrEmpty(bindingPath)) return null;
-            if (bindingPath == "Timestamp" || bindingPath == "Message" || bindingPath == "FileName" || bindingPath == "LineNumber") return null;
-
-            if (bindingPath.StartsWith("AdditionalData[") && bindingPath.EndsWith("]"))
+            var template = dataGrid.TryFindResource("BookmarkIconTemplate") as DataTemplate;
+            var column = new DataGridTemplateColumn
             {
-                return bindingPath.Substring(15, bindingPath.Length - 16);
-            }
-            return null;
-        }
-
-        private static DataGridTextColumn CreateTextColumn(DisplayColumnConfig columnConfig)
-        {
-            var binding = new Binding(columnConfig.BindingPath)
-            {
-                Mode = BindingMode.OneWay
+                Header = config.Header,
+                Width = new DataGridLength(config.Width),
+                MinWidth = config.Width,
+                CellTemplate = template,
+                CanUserResize = false
             };
 
-            if (!string.IsNullOrEmpty(columnConfig.StringFormat))
+            var cellStyle = new Style(typeof(DataGridCell));
+            cellStyle.Setters.Add(new EventSetter(Control.MouseDoubleClickEvent, new MouseButtonEventHandler(OnCellDoubleClick)));
+            cellStyle.Setters.Add(new Setter(DataGridCell.HorizontalContentAlignmentProperty, HorizontalAlignment.Center));
+
+            // ブックマーク専用コンテキストメニュー
+            var contextMenu = new ContextMenu();
+            var boolToVis = Application.Current.FindResource("BooleanToVisibilityConverter") as IValueConverter;
+
+            var filterItem = new MenuItem { Header = "拡張フィルターに追加" };
+            filterItem.SetBinding(MenuItem.CommandProperty, new Binding("DataContext.AddBookmarkFilterCommand") { Source = dataGrid });
+            filterItem.SetBinding(MenuItem.CommandParameterProperty, new Binding("BookmarkColor"));
+            filterItem.SetBinding(MenuItem.VisibilityProperty, new Binding("IsBookmarked") { Converter = boolToVis });
+            contextMenu.Items.Add(filterItem);
+
+            var clearItem = new MenuItem { Header = "ブックマークをすべて解除" };
+            clearItem.SetBinding(MenuItem.CommandProperty, new Binding("DataContext.ClearBookmarksCommand") { Source = dataGrid });
+            contextMenu.Items.Add(clearItem);
+
+            var separator = new Separator();
+            separator.SetBinding(Separator.VisibilityProperty, new Binding("IsBookmarked") { Converter = boolToVis });
+            contextMenu.Items.Add(separator);
+
+            var colorMenu = new MenuItem { Header = "色を変更" };
+            colorMenu.SetBinding(MenuItem.VisibilityProperty, new Binding("IsBookmarked") { Converter = boolToVis });
+            AddColorItems(colorMenu, dataGrid);
+            contextMenu.Items.Add(colorMenu);
+
+            cellStyle.Setters.Add(new Setter(DataGridCell.ContextMenuProperty, contextMenu));
+            column.CellStyle = cellStyle;
+
+            return column;
+        }
+
+        private static void AddColorItems(MenuItem parent, DataGrid dataGrid)
+        {
+            void Add(string name, BookmarkColor color, string hex)
             {
-                binding.StringFormat = columnConfig.StringFormat;
+                var item = new MenuItem { Header = name };
+                item.SetBinding(MenuItem.CommandProperty, new Binding("DataContext.SetBookmarkColorCommand") { Source = dataGrid });
+                item.CommandParameter = color;
+                item.Icon = new System.Windows.Shapes.Rectangle { Width = 12, Height = 12, Fill = (Brush)new BrushConverter().ConvertFromString(hex)! };
+                parent.Items.Add(item);
             }
+            Add("Red", BookmarkColor.Red, "#E57373");
+            Add("Blue", BookmarkColor.Blue, "#64B5F6");
+            Add("Green", BookmarkColor.Green, "#81C784");
+            Add("Yellow", BookmarkColor.Yellow, "#FFF176");
+        }
+
+        private static DataGridColumn CreateMessageColumn(DataGrid dataGrid, DisplayColumnConfig config)
+        {
+            var template = dataGrid.TryFindResource("MultilineMessageTemplate") as DataTemplate;
+            if (template == null) return CreateStandardTextColumn(config);
+
+            return new DataGridTemplateColumn
+            {
+                Header = config.Header,
+                Width = new DataGridLength(config.Width),
+                MinWidth = config.Width,
+                CellTemplate = template,
+                SortMemberPath = config.BindingPath
+            };
+        }
+
+        private static DataGridColumn CreateTimestampColumn(DataGrid dataGrid, DisplayColumnConfig config)
+        {
+            var column = CreateStandardTextColumn(config);
+            var cellStyle = new Style(typeof(DataGridCell));
+            var contextMenu = new ContextMenu();
+
+            var afterItem = new MenuItem { Header = "この日時以降をフィルターに追加" };
+            afterItem.SetBinding(MenuItem.CommandProperty, new Binding("DataContext.AddDateTimeFilterCommand") { Source = dataGrid });
+            afterItem.SetBinding(MenuItem.CommandParameterProperty, new Binding(".") { Converter = new DateTimeFilterConverter(), ConverterParameter = true });
+            contextMenu.Items.Add(afterItem);
+
+            var beforeItem = new MenuItem { Header = "この日時以前をフィルターに追加" };
+            beforeItem.SetBinding(MenuItem.CommandProperty, new Binding("DataContext.AddDateTimeFilterCommand") { Source = dataGrid });
+            beforeItem.SetBinding(MenuItem.CommandParameterProperty, new Binding(".") { Converter = new DateTimeFilterConverter(), ConverterParameter = false });
+            contextMenu.Items.Add(beforeItem);
+
+            cellStyle.Setters.Add(new Setter(DataGridCell.ContextMenuProperty, contextMenu));
+            column.CellStyle = cellStyle;
+            return column;
+        }
+
+        private static DataGridTextColumn CreateStandardTextColumn(DisplayColumnConfig config)
+        {
+            var binding = new Binding(config.BindingPath) { Mode = BindingMode.OneWay };
+            if (!string.IsNullOrEmpty(config.StringFormat)) binding.StringFormat = config.StringFormat;
 
             return new DataGridTextColumn
             {
-                Header = columnConfig.Header,
-                Width = new DataGridLength(columnConfig.Width),
-                MinWidth = columnConfig.Width,
+                Header = config.Header,
+                Width = new DataGridLength(config.Width),
+                MinWidth = config.Width,
                 Binding = binding,
-                SortMemberPath = columnConfig.BindingPath
+                SortMemberPath = config.BindingPath
             };
+        }
+
+        private static void ApplyColumnStyle(DataGridColumn column, DisplayColumnConfig config)
+        {
+            if (config.StyleConfig == null) return;
+
+            var cellStyle = column.CellStyle ?? new Style(typeof(DataGridCell));
+
+            void AddBindingSetter(DependencyProperty prop, string path, string param)
+            {
+                var binding = new Binding(path)
+                {
+                    Converter = new CellStyleConverter { StyleConfig = config.StyleConfig },
+                    ConverterParameter = param
+                };
+                cellStyle.Setters.Add(new Setter(prop, binding));
+            }
+
+            AddBindingSetter(DataGridCell.BackgroundProperty, config.BindingPath, "Background");
+            AddBindingSetter(DataGridCell.ForegroundProperty, config.BindingPath, "Foreground");
+            AddBindingSetter(DataGridCell.FontWeightProperty, config.BindingPath, "FontWeight");
+
+            column.CellStyle = cellStyle;
+        }
+
+        private static void ApplyHeaderContextMenu(DataGrid dataGrid, DataGridColumn column, DisplayColumnConfig config)
+        {
+            var keyName = LogEntryValueConverter.ExtractAdditionalDataKey(config.BindingPath);
+            if (string.IsNullOrEmpty(keyName)) return;
+
+            var headerMenu = new ContextMenu();
+            headerMenu.Items.Add(new MenuItem
+            {
+                Header = "拡張フィルターに追加",
+                Command = (dataGrid.DataContext as MainViewModel)?.AddExtensionFilterCommand,
+                CommandParameter = keyName
+            });
+
+            var baseHeaderStyle = Application.Current.FindResource(typeof(System.Windows.Controls.Primitives.DataGridColumnHeader)) as Style;
+            var headerStyle = new Style(typeof(System.Windows.Controls.Primitives.DataGridColumnHeader), baseHeaderStyle);
+            headerStyle.Setters.Add(new Setter(FrameworkElement.ContextMenuProperty, headerMenu));
+            column.HeaderStyle = headerStyle;
+        }
+
+        private static void OnCellDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is DataGridCell cell && cell.DataContext is LogEntry)
+            {
+                var dataGrid = FindAncestor<DataGrid>(cell);
+                if (dataGrid?.DataContext is MainViewModel vm)
+                {
+                    vm.ToggleBookmarkCommand?.Execute(null);
+                    e.Handled = true;
+                }
+            }
+        }
+
+        private static T? FindAncestor<T>(DependencyObject current) where T : DependencyObject
+        {
+            do
+            {
+                if (current is T ancestor) return ancestor;
+                current = VisualTreeHelper.GetParent(current);
+            }
+            while (current != null);
+            return null;
         }
     }
 }
