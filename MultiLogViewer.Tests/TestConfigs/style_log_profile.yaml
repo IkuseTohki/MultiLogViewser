@@ -1,4 +1,3 @@
-polling_interval_ms: 1000
 display_columns:
   - header: "Level"
     binding_path: "AdditionalData[level]"

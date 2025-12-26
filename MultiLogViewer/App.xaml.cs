@@ -66,7 +66,7 @@ namespace MultiLogViewer
                 System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
 
                 var configPathResolver = _serviceProvider.GetRequiredService<IConfigPathResolver>();
-                var configPath = configPathResolver.ResolvePath(e.Args);
+                var configPath = configPathResolver.ResolveLogProfilePath(e.Args);
 
                 var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
                 var mainViewModel = _serviceProvider.GetRequiredService<MainViewModel>();

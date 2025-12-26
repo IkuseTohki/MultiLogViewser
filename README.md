@@ -30,14 +30,24 @@ WPF を採用し、高速な動作と柔軟なカスタマイズ性を両立し�
   - **ダイジェスト・ビュー**: マークした行の間隔（Δt）を自動計算し、トラブルのタイムライン分析を支援。
 - **フィルタ・プリセット**: 複雑なフィルタ条件を YAML ファイルとして保存・読み込みでき、解析目的ごとに条件を素早く切り替えられます。
 
-## 設定方法 (`config.yaml`)
+## 設定方法
 
-アプリケーションの挙動は、`config.yaml` で制御します。
+アプリケーションの挙動は、用途に応じて 2 つの YAML ファイルで制御します。
+
+### 1. アプリ動作設定 (`AppSettings.yaml`)
+
+アプリケーション自体の挙動（更新間隔など）を設定します。
 
 ```yaml
 # 監視の更新間隔（ミリ秒）
 polling_interval_ms: 1000
+```
 
+### 2. ログ解析プロファイル (`LogProfile.yaml`)
+
+ログの読み込みルールや表示形式を定義します。
+
+```yaml
 # 画面に表示する列の定義
 display_columns:
   - {
@@ -66,8 +76,8 @@ log_formats:
   - name: "ApplicationLog"
     log_file_patterns:
       # 日付フォルダへの動的追従
-      - "C:\\Logs\\{yyyy}\\{MM}\\{dd}\\app.log"
-    pattern: "^(?<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}) \\[(?<level>\\w+)\\] (?<message>.*)$"
+      - 'C:\Logs\{yyyy}\{MM}\{dd}\app.log'
+    pattern: '^(?<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[(?<level>\w+)\] (?<message>.*)$'
     timestamp_format: "yyyy-MM-dd HH:mm:ss"
     is_multiline: true
     field_transforms:
@@ -75,7 +85,7 @@ log_formats:
         map: { "E": "ERROR", "W": "WARN", "I": "INFO" }
     sub_patterns:
       - source_field: "message"
-        pattern: "user='(?<user>\\w+)'"
+        pattern: 'user=(?<user>\w+)'
 ```
 
 ## 詳細ドキュメント
@@ -90,10 +100,11 @@ log_formats:
 ## セットアップと実行
 
 1. .NET 10 Runtime をインストールします。
-2. `config.yaml` をご自身の環境に合わせて編集します。
+2. `AppSettings.yaml` と `LogProfile.yaml` をご自身の環境に合わせて編集します。
 3. `MultiLogViewer.exe` を実行します。
-   - 引数として設定ファイルのパスを直接渡すことも可能です。
-   - 例: `MultiLogViewer.exe "C:\path\to\my_config.yaml"`
+   - 引数として **ログ解析プロファイル (`LogProfile.yaml`)** のパスを直接渡すことも可能です。
+   - 例: `MultiLogViewer.exe "C:\path\to\my_project_profile.yaml"`
+   - `AppSettings.yaml` は常に実行ファイルと同じディレクトリのものが読み込まれます。
 
 ## ライセンス
 

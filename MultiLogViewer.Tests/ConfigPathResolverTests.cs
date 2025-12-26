@@ -17,18 +17,18 @@ namespace MultiLogViewer.Tests
         }
 
         /// <summary>
-        /// テスト観点: コマンドライン引数で設定ファイルのパスが指定された場合、
+        /// テスト観点: コマンドライン引数でログプロファイルのパスが指定された場合、
         /// そのパスが正しく返されることを確認する。
         /// </summary>
         [TestMethod]
-        public void ResolvePath_WithArgument_ReturnsArgumentPath()
+        public void ResolveLogProfilePath_WithArgument_ReturnsArgumentPath()
         {
             // Arrange
-            var expectedPath = "C:\\custom\\config.yaml";
+            var expectedPath = "C:\\custom\\custom_profile.yaml";
             var args = new string[] { expectedPath };
 
             // Act
-            var actualPath = _resolver.ResolvePath(args);
+            var actualPath = _resolver.ResolveLogProfilePath(args);
 
             // Assert
             Assert.AreEqual(expectedPath, actualPath);
@@ -36,17 +36,33 @@ namespace MultiLogViewer.Tests
 
         /// <summary>
         /// テスト観点: コマンドライン引数が指定されなかった場合、
-        /// デフォルトのパス（実行ファイルと同じディレクトリの config.yaml）が返されることを確認する。
+        /// デフォルトのパス（実行ファイルと同じディレクトリの LogProfile.yaml）が返されることを確認する。
         /// </summary>
         [TestMethod]
-        public void ResolvePath_WithoutArgument_ReturnsDefaultPath()
+        public void ResolveLogProfilePath_WithoutArgument_ReturnsDefaultPath()
         {
             // Arrange
             var args = new string[] { };
-            var expectedPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.yaml");
+            var expectedPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "LogProfile.yaml");
 
             // Act
-            var actualPath = _resolver.ResolvePath(args);
+            var actualPath = _resolver.ResolveLogProfilePath(args);
+
+            // Assert
+            Assert.AreEqual(expectedPath, actualPath);
+        }
+
+        /// <summary>
+        /// テスト観点: AppSettings.yaml のパスが正しく返されることを確認する。
+        /// </summary>
+        [TestMethod]
+        public void GetAppSettingsPath_ReturnsDefaultPath()
+        {
+            // Arrange
+            var expectedPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "AppSettings.yaml");
+
+            // Act
+            var actualPath = _resolver.GetAppSettingsPath();
 
             // Assert
             Assert.AreEqual(expectedPath, actualPath);

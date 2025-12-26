@@ -1,6 +1,6 @@
 # もっと便利に！MultiLogViewer 追加機能ガイド 🌟
 
-このガイドでは、最近追加された「ログをもっと見やすく、分かりやすくする」ための新しい設定について解説します。
+このガイドでは、「ログをもっと見やすく、分かりやすくする」ための設定について解説します。
 基本の書き方に慣れてきたら、これらの機能を組み合わせて「自分専用の最強ログビューアー」を作ってみましょう！
 
 ---
@@ -72,7 +72,7 @@ field_transforms:
 ```yaml
 sub_patterns:
   - source_field: "message" # メッセージの中から探してね
-    pattern: "user=(?<user>\\w+)" # user= の後ろにある英数字を「ユーザー」として抜き出す
+    pattern: 'user=(?<user>\w+)' # user= の後ろにある英数字を「ユーザー」として抜き出す
 ```
 
 ---
@@ -101,9 +101,9 @@ log_formats:
   - name: "日付フォルダログ"
     log_file_patterns:
       # C:\Logs\2023\12\21\app.log のように自動で解釈されます
-      - "C:\\Logs\\{yyyy}\\{MM}\\{dd}\\app.log"
+      - 'C:\Logs\{yyyy}\{MM}\\{dd}\app.log'
       # glob パターンとの組み合わせも OK！
-      - "logs/{yyyy}{MM}{dd}/*.log"
+      - "logs\{yyyy}{MM}{dd}\*.log"
 ```
 
 ---
@@ -152,11 +152,12 @@ log_formats:
 
 こんな不親切なログも、設定次第でここまで変わります！
 
-**元のログ (Before):**
+**元のログ (Before)**
+
 `2023-12-20 [E] 処理失敗 user=tanaka`
 `   at System.Main()` (← 複数行)
 
-**設定 (config.yaml):**
+**設定 (LogProfile.yaml)**
 
 ```yaml
 log_formats:
@@ -167,15 +168,16 @@ log_formats:
         map: { "E": "❌ エラー発生" } # E を分かりやすく
     sub_patterns:
       - source_field: "message"
-        pattern: "user=(?<user>\\w+)"
+        pattern: 'user=(?<user>\w+)'
         field_transforms:
           - field: "user"
             format: "担当者：{value}" # 担当者：を付ける
 ```
 
-**画面での見え方 (After):**
-| 日時 | レベル | メッセージ | ユーザー |
-| :--- | :--- | :--- | :--- |
+**画面での見え方 (After)**
+
+| 日時       | レベル        | メッセージ           | ユーザー       |
+| :--------- | :------------ | :------------------- | :------------- |
 | 2023/12/20 | ❌ エラー発生 | 処理失敗 user=tanaka | 担当者：tanaka |
 
 さらに、右側の「詳細パネル」を開けば、合体した `at System.Main()` もしっかり確認できます！

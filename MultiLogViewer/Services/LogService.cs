@@ -9,20 +9,24 @@ namespace MultiLogViewer.Services
         private readonly ILogFormatConfigLoader _logFormatConfigLoader;
         private readonly IFileResolver _fileResolver;
         private readonly ILogFileReader _logFileReader;
+        private readonly IConfigPathResolver _configPathResolver;
 
         public LogService(
             ILogFormatConfigLoader logFormatConfigLoader,
             IFileResolver fileResolver,
-            ILogFileReader logFileReader)
+            ILogFileReader logFileReader,
+            IConfigPathResolver configPathResolver)
         {
             _logFormatConfigLoader = logFormatConfigLoader;
             _fileResolver = fileResolver;
             _logFileReader = logFileReader;
+            _configPathResolver = configPathResolver;
         }
 
         public LogDataResult LoadFromConfig(string configPath)
         {
-            var appConfig = _logFormatConfigLoader.Load(configPath);
+            var appSettingsPath = _configPathResolver.GetAppSettingsPath();
+            var appConfig = _logFormatConfigLoader.Load(configPath, appSettingsPath);
             if (appConfig == null)
             {
                 return new LogDataResult(new List<LogEntry>(), new List<DisplayColumnConfig>(), new List<FileState>());
@@ -76,7 +80,8 @@ namespace MultiLogViewer.Services
 
         public LogDataResult LoadIncremental(string configPath, List<FileState> currentStates, long startSequenceNumber)
         {
-            var appConfig = _logFormatConfigLoader.Load(configPath);
+            var appSettingsPath = _configPathResolver.GetAppSettingsPath();
+            var appConfig = _logFormatConfigLoader.Load(configPath, appSettingsPath);
             if (appConfig == null || appConfig.LogFormats == null)
             {
                 return new LogDataResult(new List<LogEntry>(), new List<DisplayColumnConfig>(), currentStates);

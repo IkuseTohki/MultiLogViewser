@@ -17,9 +17,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Resources\config.yaml">
+    <None Update="Resources\LogProfile.yaml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>config.yaml</Link>
+      <Link>LogProfile.yaml</Link>
+    </None>
+    <None Update="Resources\AppSettings.yaml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>AppSettings.yaml</Link>
     </None>
   </ItemGroup>
 

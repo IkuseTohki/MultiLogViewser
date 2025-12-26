@@ -13,6 +13,7 @@ namespace MultiLogViewer.Tests
         private Mock<ILogFormatConfigLoader> _mockConfigLoader = null!;
         private Mock<IFileResolver> _mockFileResolver = null!;
         private Mock<ILogFileReader> _mockLogFileReader = null!;
+        private Mock<IConfigPathResolver> _mockConfigPathResolver = null!; // 追加
         private LogService _logService = null!;
 
         [TestInitialize]
@@ -21,14 +22,23 @@ namespace MultiLogViewer.Tests
             _mockConfigLoader = new Mock<ILogFormatConfigLoader>();
             _mockFileResolver = new Mock<IFileResolver>();
             _mockLogFileReader = new Mock<ILogFileReader>();
-            _logService = new LogService(_mockConfigLoader.Object, _mockFileResolver.Object, _mockLogFileReader.Object);
+            _mockConfigPathResolver = new Mock<IConfigPathResolver>(); // 追加
+
+            // デフォルトの設定
+            _mockConfigPathResolver.Setup(r => r.GetAppSettingsPath()).Returns("AppSettings.yaml");
+
+            _logService = new LogService(
+                _mockConfigLoader.Object,
+                _mockFileResolver.Object,
+                _mockLogFileReader.Object,
+                _mockConfigPathResolver.Object); // 追加
         }
 
         [TestMethod]
         public void LoadFromConfig_Success_ReturnsSortedEntriesAndColumns()
         {
             // Arrange
-            var configPath = "config.yaml";
+            var configPath = "LogProfile.yaml";
             var appConfig = new AppConfig
             {
                 DisplayColumns = new List<DisplayColumnConfig> { new DisplayColumnConfig { Header = "Col1" } },
@@ -44,7 +54,8 @@ namespace MultiLogViewer.Tests
                 new LogEntry { Timestamp = new System.DateTime(2023, 1, 1), Message = "Earlier" }
             };
 
-            _mockConfigLoader.Setup(l => l.Load(configPath)).Returns(appConfig);
+            // 引数追加
+            _mockConfigLoader.Setup(l => l.Load(configPath, It.IsAny<string>())).Returns(appConfig);
             _mockFileResolver.Setup(r => r.Resolve(It.IsAny<List<string>>())).Returns(new List<string> { "file.log" });
 
             // LogService changed to use ReadIncremental with IEnumerable<LogFormatConfig>
@@ -65,7 +76,7 @@ namespace MultiLogViewer.Tests
         public void LoadFromConfig_SameTimestamp_PreservesOriginalOrder()
         {
             // テスト観点: 同一時刻のログが複数ある場合に、ファイル内での出現順（シーケンス番号）が維持されることを確認する。
-            var configPath = "config.yaml";
+            var configPath = "LogProfile.yaml";
             var appConfig = new AppConfig
             {
                 LogFormats = new List<LogFormatConfig>
@@ -83,7 +94,8 @@ namespace MultiLogViewer.Tests
                 new LogEntry { Timestamp = sameTime, Message = "Third" }
             };
 
-            _mockConfigLoader.Setup(l => l.Load(configPath)).Returns(appConfig);
+            // 引数追加
+            _mockConfigLoader.Setup(l => l.Load(configPath, It.IsAny<string>())).Returns(appConfig);
             _mockFileResolver.Setup(r => r.Resolve(It.IsAny<List<string>>())).Returns(new List<string> { "file.log" });
             _mockLogFileReader.Setup(r => r.ReadIncremental(It.IsAny<FileState>(), It.IsAny<IEnumerable<LogFormatConfig>>()))
                 .Returns((logs, new FileState("file.log", 300, 3)));
@@ -108,7 +120,7 @@ namespace MultiLogViewer.Tests
         public void LoadFromConfig_MultipleFiles_SameTimestamp_PreservesFileOrder()
         {
             // テスト観点: 異なるファイルに同一時刻のログがある場合、ファイルが読み込まれた順序が維持されることを確認する。
-            var configPath = "config.yaml";
+            var configPath = "LogProfile.yaml";
             var sameTime = new System.DateTime(2023, 1, 1, 10, 0, 0);
 
             var appConfig = new AppConfig
@@ -119,7 +131,8 @@ namespace MultiLogViewer.Tests
                 }
             };
 
-            _mockConfigLoader.Setup(l => l.Load(configPath)).Returns(appConfig);
+            // 引数追加
+            _mockConfigLoader.Setup(l => l.Load(configPath, It.IsAny<string>())).Returns(appConfig);
             // Resolverが2つのファイルを返す
             _mockFileResolver.Setup(r => r.Resolve(It.IsAny<List<string>>())).Returns(new List<string> { "fileA.log", "fileB.log" });
 
@@ -154,7 +167,7 @@ namespace MultiLogViewer.Tests
         public void LoadIncremental_ContinuesSequenceNumber()
         {
             // テスト観点: インクリメンタル読み込み時に、前回の終わりの番号から連番が継続されることを確認する。
-            var configPath = "config.yaml";
+            var configPath = "LogProfile.yaml";
             var sameTime = new System.DateTime(2023, 1, 1, 10, 0, 0);
             var appConfig = new AppConfig
             {
@@ -164,7 +177,8 @@ namespace MultiLogViewer.Tests
                 }
             };
 
-            _mockConfigLoader.Setup(l => l.Load(configPath)).Returns(appConfig);
+            // 引数追加
+            _mockConfigLoader.Setup(l => l.Load(configPath, It.IsAny<string>())).Returns(appConfig);
             _mockFileResolver.Setup(r => r.Resolve(It.IsAny<List<string>>())).Returns(new List<string> { "file.log" });
 
             // 10行読み込み済みの状態から、5行新しく読み込む想定

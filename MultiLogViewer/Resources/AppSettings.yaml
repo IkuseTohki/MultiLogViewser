@@ -1,0 +1,5 @@
+# MultiLogViewer Configuration Template
+# ------------------------------------
+
+# 監視の更新間隔（ミリ秒）
+polling_interval_ms: 1000

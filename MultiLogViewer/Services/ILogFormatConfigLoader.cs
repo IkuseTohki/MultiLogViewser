@@ -8,10 +8,11 @@ namespace MultiLogViewer.Services
     public interface ILogFormatConfigLoader
     {
         /// <summary>
-        /// 指定されたパスの設定ファイルを読み込み、解析します。
+        /// 指定されたパスの設定ファイル群を読み込み、統合された設定オブジェクトを生成します。
         /// </summary>
-        /// <param name="filePath">設定ファイルのパス。</param>
-        /// <returns>解析された AppConfig オブジェクト。読み込み失敗時は null。</returns>
-        AppConfig? Load(string filePath);
+        /// <param name="logProfilePath">ログプロファイル(LogProfile.yaml)のパス。</param>
+        /// <param name="appSettingsPath">アプリケーション設定(AppSettings.yaml)のパス。</param>
+        /// <returns>統合された AppConfig オブジェクト。</returns>
+        AppConfig Load(string logProfilePath, string appSettingsPath);
     }
 }

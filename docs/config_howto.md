@@ -1,16 +1,16 @@
-# 超やさしい！MultiLogViewer の `config.yaml` 設定ガイド
+# 超やさしい！MultiLogViewer の `LogProfile.yaml` 設定ガイド
 
 こんにちは！MultiLogViewer をお使いいただきありがとうございます。
-このガイドでは、ログファイルを見やすくするための設定ファイル `config.yaml` の書き方を、とっても優しく、具体的な例をたくさん交えながら説明します。
+このガイドでは、ログファイルを見やすくするための設定ファイル `LogProfile.yaml` の書き方を、具体的な例をたくさん交えながら説明します。
 
 「設定ファイルって難しそう…」「正規表現って何？」と思った方もご安心ください！
 一緒にひとつずつ見ていきましょう。
 
 ---
 
-## 🚀 `config.yaml` って何？ なぜ必要？
+## 🚀 `LogProfile.yaml` って何？ なぜ必要？
 
-`config.yaml` は、MultiLogViewer に「どのログファイルを、どんなルールで読み込んで、どう表示するか」を伝えるための指示書のようなものです。
+`LogProfile.yaml` は、MultiLogViewer に「どのログファイルを、どんなルールで読み込んで、どう表示するか」を伝えるための指示書のようなものです。
 
 この指示書を正しく書くことで、ごちゃごちゃしたログの中から必要な情報だけを抜き出して、表のようにきれいに表示できるようになります。
 
@@ -21,9 +21,9 @@ YAML (ヤムル) は、設定ファイルを人間にとっても読みやすく
 
 ---
 
-## 📝 `config.yaml` の全体像
+## 📝 `LogProfile.yaml` の全体像
 
-`config.yaml` は大きく分けて、次の 2 つの部分でできています。
+`LogProfile.yaml` は大きく分けて、次の 2 つの部分でできています。
 
 1. **`display_columns`**: MultiLogViewer の画面に「どんな項目を、どの順番で、どのくらいの幅で」表示するかを決めます。
 2. **`log_formats`**: 読み込みたいログファイルが「どこにあって、ログの 1 行がどんな形をしているか」を教えます。
@@ -131,14 +131,14 @@ display_columns:
 2023-10-26 10:15:20 [ERROR] Failed to connect to database.
 ```
 
-**`config.yaml` の設定:**
+**`LogProfile.yaml` の設定:**
 
 ```yaml
 log_formats:
   - name: "シンプルなアプリケーションログ"
     log_file_patterns:
-      - "C:\\Logs\\myapp\\*.log" # このフォルダの全ての.logファイルを読み込む
-    pattern: "^(?<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}) \\[(?<level>\\w+)\\] (?<message>.*)$"
+      - 'C:\Logs\myapp\*.log' # このフォルダの全ての.logファイルを読み込む
+    pattern: '^(?<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[(?<level>\w+)\] (?<message>.*)$'
     timestamp_format: "yyyy-MM-dd HH:mm:ss" # 時刻の形式
 ```
 
@@ -168,14 +168,14 @@ log_formats:
 [2023/10/26 10:45:11.456] DEBUG - Data received.
 ```
 
-**`config.yaml` の設定:**
+**`LogProfile.yaml` の設定:**
 
 ```yaml
 log_formats:
   - name: "スラッシュ形式の時刻ログ"
     log_file_patterns:
-      - "C:\\Logs\\another_app\\*.log"
-    pattern: "^\\[(?<timestamp>\\d{4}/\\d{2}/\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{3})\\] (?<level>\\w+) - (?<message>.*)$"
+      - 'C:\Logs\another_app\*.log'
+    pattern: '^\[(?<timestamp>\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\.\d{3})\] (?<level>\w+) - (?<message>.*)$'
     timestamp_format: "yyyy/MM/dd HH:mm:ss.fff" # ここで時刻の形式を合わせる！
 ```
 
@@ -195,20 +195,20 @@ log_formats:
 2023-10-26 11:00:05 [WARN] Login failed for user 'guest' from 192.168.1.1.
 ```
 
-**`config.yaml` の設定:**
+**`LogProfile.yaml` の設定:**
 
 ```yaml
 log_formats:
   - name: "ユーザー名とIPを含むログ"
     log_file_patterns:
-      - "C:\\Logs\\webserver\\access.log"
-    pattern: "^(?<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}) \\[(?<level>\\w+)\\] (?<message>.*)$"
+      - 'C:\Logs\webserver\access.log'
+    pattern: '^(?<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[(?<level>\w+)\] (?<message>.*)$'
     timestamp_format: "yyyy-MM-dd HH:mm:ss"
     sub_patterns: # ここがポイント！
       - source_field: "message" # 「message」という抜き出した情報の中から探す
         pattern: "by user '(?<user>\\w+)'" # 「by user 'ユーザー名'」の「ユーザー名」を抜き出す
       - source_field: "message"
-        pattern: "from (?<ip>\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3})" # 「from IPアドレス」の「IPアドレス」を抜き出す
+        pattern: 'from (?<ip>\d{1,3}\. \d{1,3}\. \d{1,3}\. \d{1,3})' # 「from IPアドレス」の「IPアドレス」を抜き出す
 ```
 
 **解説:**
@@ -233,20 +233,20 @@ log_formats:
 [ERROR] 2023/10/26 10:35:00 - Critical error occurred.
 ```
 
-**`config.yaml` の設定:**
+**`LogProfile.yaml` の設定:**
 
 ```yaml
 log_formats:
   - name: "アプリケーションログ" # 1つ目のログのルール
     log_file_patterns:
-      - "C:\\Logs\\myapp\\*.log"
-    pattern: "^(?<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}) \\[(?<level>\\w+)\\] (?<message>.*)$"
+      - 'C:\Logs\myapp\*.log'
+    pattern: '^(?<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[(?<level>\w+)\] (?<message>.*)$'
     timestamp_format: "yyyy-MM-dd HH:mm:ss"
 
   - name: "エラーログ" # 2つ目のログのルール
     log_file_patterns:
-      - "C:\\Logs\\errorlog\\error_*.log"
-    pattern: "^\\[(?<level>\\w+)\\] (?<timestamp>\\d{4}/\\d{2}/\\d{2} \\d{2}:\\d{2}:\\d{2}) - (?<message>.*)$"
+      - 'C:\Logs\errorlog\error_*.log'
+    pattern: '^\[(?<level>\w+)\] (?<timestamp>\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}) - (?<message>.*)$'
     timestamp_format: "yyyy/MM/dd HH:mm:ss"
 ```
 
@@ -266,21 +266,21 @@ log_formats:
 2023/10/26 10:30:05 [WARN] (PID:1234) System resource low.
 ```
 
-**`config.yaml` の設定:**
+**`LogProfile.yaml` の設定:**
 同じファイルパス (`mixed.log`) に対して、2 つのフォーマット定義を書きます。
 
 ```yaml
 log_formats:
   - name: "アプリログ形式"
     log_file_patterns:
-      - "C:\\Logs\\mixed.log"
-    pattern: "^(?<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}) \\[(?<level>\\w+)\\] <(?<user>\\w+)> (?<message>.*)$"
+      - 'C:\Logs\mixed.log'
+    pattern: '^(?<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[(?<level>\w+)\] <(?<user>\w+)> (?<message>.*)$'
     timestamp_format: "yyyy-MM-dd HH:mm:ss"
 
   - name: "システムログ形式"
     log_file_patterns:
-      - "C:\\Logs\\mixed.log" # 同じファイルを指定！
-    pattern: "^(?<timestamp>\\d{4}/\\d{2}/\\d{2} \\d{2}:\\d{2}:\\d{2}) \\[(?<level>\\w+)\\] \\(PID:(?<pid>\\d+)\\) (?<message>.*)$"
+      - 'C:\Logs\mixed.log' # 同じファイルを指定！
+    pattern: '^(?<timestamp>\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}) \[(?<level>\w+)\] \(PID:(?<pid>\d+)\) (?<message>.*)$'
     timestamp_format: "yyyy/MM/dd HH:mm:ss"
 ```
 
@@ -295,11 +295,11 @@ log_formats:
 
 ここまで読んでいただきありがとうございます！
 
-`config.yaml` の設定は、最初は少し複雑に感じるかもしれませんが、いくつかのポイントを押さえれば、あなたのログ分析がぐっと楽になります。
+`LogProfile.yaml` の設定は、最初は少し複雑に感じるかもしれませんが、いくつかのポイントを押さえれば、あなたのログ分析がぐっと楽になります。
 
 1. **まずはシンプルなログから**: 一番簡単なログの形式から `pattern` を作ってみましょう。
 2. **正規表現ツールを活用**: Rubular や regex101 を使って、あなたのログが正しく抜き出せるかを確認しながら作りましょう。
-3. **少しずつ試す**: `config.yaml` を変更したら、MultiLogViewer で実際に読み込ませてみて、表示がどう変わるかを確認しましょう。
+3. **少しずつ試す**: `LogProfile.yaml` を変更したら、MultiLogViewer で実際に読み込ませてみて、表示がどう変わるかを確認しましょう。
 
 もし困ったことがあれば、いつでも質問してくださいね！
 あなたのログ分析が快適になることを願っています。

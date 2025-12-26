@@ -220,7 +220,7 @@ namespace MultiLogViewer.Tests
             _viewModel = CreateViewModel();
 
             // Act
-            await _viewModel.Initialize("invalid_config.yaml");
+            await _viewModel.Initialize("invalid_profile.yaml");
 
             // Assert
             _mockUserDialogService.Verify(s => s.ShowError("設定エラー", errorMessage), Times.Once);
@@ -364,7 +364,7 @@ namespace MultiLogViewer.Tests
                 .Returns(new LogDataResult(new List<LogEntry>(), new List<DisplayColumnConfig>(), new List<FileState>()));
 
             _viewModel = CreateViewModel();
-            await _viewModel.Initialize("config.yaml");
+            await _viewModel.Initialize("LogProfile.yaml");
             _mockLogService.Invocations.Clear();
 
             // Act
@@ -372,7 +372,7 @@ namespace MultiLogViewer.Tests
             // 同期実行されるため待機不要
 
             // Assert
-            _mockLogService.Verify(s => s.LoadFromConfig("config.yaml"), Times.Once);
+            _mockLogService.Verify(s => s.LoadFromConfig("LogProfile.yaml"), Times.Once);
         }
 
         // --- Search Function Tests ---

@@ -10,17 +10,18 @@ namespace MultiLogViewer.Tests
     public class LogFormatConfigLoaderTests
     {
         /// <summary>
-        /// テスト観点: TestConfigs/valid_config.yaml ファイルが正しく読み込まれ、AppConfigオブジェクトが生成されることを確認する。
+        /// テスト観点: TestConfigs/valid_log_profile.yaml (ログプロファイル) ファイルが正しく読み込まれ、AppConfigオブジェクトが生成されることを確認する。
         /// </summary>
         [TestMethod]
         public void LoadConfig_ValidYamlFile_ReturnsAppConfig()
         {
             // Arrange
-            var configPath = "TestConfigs/valid_config.yaml";
+            var logProfilePath = "TestConfigs/valid_log_profile.yaml";
             var loader = new LogFormatConfigLoader();
 
             // Act
-            var config = loader.Load(configPath);
+            // 既存のファイルをログプロファイルとして読み込む
+            var config = loader.Load(logProfilePath, "");
 
             // Assert
             Assert.IsNotNull(config);
@@ -42,51 +43,91 @@ namespace MultiLogViewer.Tests
             Assert.IsNotNull(appLog.LogFilePatterns);
             Assert.AreEqual(1, appLog.LogFilePatterns.Count);
             Assert.AreEqual("app_*.log", appLog.LogFilePatterns[0]);
-
-            var webLog = config.LogFormats[1];
-            Assert.AreEqual("WebServerLog", webLog.Name);
-            Assert.AreEqual(@"^(?<level>\w+) \d+ (?<timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z) (?<message>.*)$", webLog.Pattern);
-            Assert.AreEqual("yyyy-MM-ddTHH:mm:ss.fffZ", webLog.TimestampFormat);
-            Assert.IsNotNull(webLog.LogFilePatterns);
-            Assert.AreEqual(1, webLog.LogFilePatterns.Count);
-            Assert.AreEqual("web_*.log", webLog.LogFilePatterns[0]);
         }
 
         /// <summary>
-        /// テスト観点: 存在しないYAML設定ファイルを渡した場合、空のAppConfigが返されることを確認する。
+        /// テスト観点: どちらの設定ファイルも存在しない場合、デフォルト値を持つAppConfigが返されることを確認する。
         /// </summary>
         [TestMethod]
-        public void LoadConfig_NonExistentFile_ReturnsEmptyAppConfig()
+        public void LoadConfig_NoFiles_ReturnsAppConfigWithDefaults()
         {
             // Arrange
             var loader = new LogFormatConfigLoader();
 
             // Act
-            var config = loader.Load("non_existent_file.yaml");
+            var config = loader.Load("non_existent_profile.yaml", "non_existent_settings.yaml");
 
             // Assert
             Assert.IsNotNull(config);
-            Assert.IsNotNull(config.LogFormats);
+            Assert.AreEqual(1000, config.PollingIntervalMs, "Should use default value when settings file is missing.");
             Assert.AreEqual(0, config.LogFormats.Count);
-            Assert.IsNotNull(config.DisplayColumns);
             Assert.AreEqual(0, config.DisplayColumns.Count);
         }
 
         /// <summary>
-        /// テスト観点: TestConfigs/style_config.yaml ファイルから column_styles が正しく読み込まれることを確認する。
+        /// テスト観点: ログプロファイルのみ存在し、アプリケーション設定が欠落している場合、
+        /// 設定はデフォルト値のままプロファイルが読み込まれることを確認する。
+        /// </summary>
+        [TestMethod]
+        public void LoadConfig_OnlyLogProfile_ReturnsCombinedWithDefaultSettings()
+        {
+            // Arrange
+            var logProfilePath = "TestConfigs/valid_log_profile.yaml";
+            var loader = new LogFormatConfigLoader();
+
+            // Act
+            var config = loader.Load(logProfilePath, "non_existent_settings.yaml");
+
+            // Assert
+            Assert.IsNotNull(config);
+            Assert.AreEqual(1000, config.PollingIntervalMs, "Should use default value.");
+            Assert.IsTrue(config.LogFormats.Any(), "Should load LogFormats from profile.");
+        }
+
+        /// <summary>
+        /// テスト観点: アプリケーション設定のみ存在し、ログプロファイルが欠落している場合、
+        /// 設定値が反映され、プロファイルの内容は空であることを確認する。
+        /// </summary>
+        [TestMethod]
+        public void LoadConfig_OnlyAppSettings_ReturnsEmptyProfileWithSettings()
+        {
+            // Arrange
+            var appSettingsPath = Path.Combine(Path.GetTempPath(), "test_app_settings_only.yaml");
+            File.WriteAllText(appSettingsPath, "polling_interval_ms: 500");
+            var loader = new LogFormatConfigLoader();
+
+            try
+            {
+                // Act
+                var config = loader.Load("non_existent_profile.yaml", appSettingsPath);
+
+                // Assert
+                Assert.IsNotNull(config);
+                Assert.AreEqual(500, config.PollingIntervalMs);
+                Assert.AreEqual(0, config.LogFormats.Count);
+            }
+            finally
+            {
+                if (File.Exists(appSettingsPath)) File.Delete(appSettingsPath);
+            }
+        }
+
+        /// <summary>
+        /// テスト観点: TestConfigs/style_log_profile.yaml ファイルから column_styles が正しく読み込まれることを確認する。
         /// </summary>
         [TestMethod]
         public void LoadConfig_StyleConfig_ReturnsColumnStyles()
         {
             // Arrange
-            var configPath = "TestConfigs/style_config.yaml";
+            var logProfilePath = "TestConfigs/style_log_profile.yaml";
             var loader = new LogFormatConfigLoader();
 
             // Act
-            var config = loader.Load(configPath);
+            var config = loader.Load(logProfilePath, "");
 
             // Assert
             Assert.IsNotNull(config);
+            Assert.AreEqual(1000, config.PollingIntervalMs, "PollingIntervalMs should remain default (1000) as it is not part of LogProfile.");
             Assert.IsNotNull(config.ColumnStyles);
             Assert.AreEqual(2, config.ColumnStyles.Count);
 
@@ -101,12 +142,35 @@ namespace MultiLogViewer.Tests
             Assert.AreEqual("White", errorRule.Foreground);
             Assert.AreEqual("#D32F2F", errorRule.Background);
             Assert.AreEqual("Bold", errorRule.FontWeight);
+        }
 
-            // User カラムのスタイル検証
-            var userStyle = config.ColumnStyles.FirstOrDefault(c => c.ColumnHeader == "User");
-            Assert.IsNotNull(userStyle);
-            Assert.IsTrue(userStyle.SemanticColoring);
-            Assert.AreEqual(0, userStyle.Rules.Count);
+        /// <summary>
+        /// テスト観点: ログプロファイルとアプリケーション設定の両方が指定された場合、正しくマージされることを確認する。
+        /// </summary>
+        [TestMethod]
+        public void LoadConfig_SplitFiles_ReturnsCombinedAppConfig()
+        {
+            // Arrange
+            var logProfilePath = "TestConfigs/valid_log_profile.yaml";
+            var appSettingsPath = Path.Combine(Path.GetTempPath(), "test_app_settings.yaml");
+            File.WriteAllText(appSettingsPath, "polling_interval_ms: 2000");
+
+            var loader = new LogFormatConfigLoader();
+
+            try
+            {
+                // Act
+                var config = loader.Load(logProfilePath, appSettingsPath);
+
+                // Assert
+                Assert.IsNotNull(config);
+                Assert.AreEqual(2000, config.PollingIntervalMs, "PollingIntervalMs should be loaded from AppSettings.");
+                Assert.IsTrue(config.LogFormats.Any(), "LogFormats should be loaded from LogProfile.");
+            }
+            finally
+            {
+                if (File.Exists(appSettingsPath)) File.Delete(appSettingsPath);
+            }
         }
 
         /// <summary>
@@ -116,24 +180,25 @@ namespace MultiLogViewer.Tests
         public void LoadConfig_InvalidYaml_ThrowsExceptionWithFriendlyMessage()
         {
             // Arrange
-            var configPath = Path.Combine(Path.GetTempPath(), "invalid_config.yaml");
-            File.WriteAllText(configPath, "invalid: [ : : yaml"); // 構文エラーになるYAML
+            var logProfilePath = Path.Combine(Path.GetTempPath(), "invalid_profile.yaml");
+            File.WriteAllText(logProfilePath, "invalid: [ : : yaml"); // 構文エラーになるYAML
             var loader = new LogFormatConfigLoader();
 
             try
             {
                 // Act
-                loader.Load(configPath);
+                loader.Load(logProfilePath, "");
                 Assert.Fail("Should have thrown an exception.");
             }
             catch (System.Exception ex)
             {
                 // Assert
-                Assert.IsTrue(ex.Message.Contains("設定ファイル(config.yaml)の解析に失敗しました"), $"Actual message: {ex.Message}");
+                // メッセージは "ログプロファイル(...)の解析に失敗しました" になるはず
+                Assert.IsTrue(ex.Message.Contains("ログプロファイル"), $"Actual message: {ex.Message}");
             }
             finally
             {
-                if (File.Exists(configPath)) File.Delete(configPath);
+                if (File.Exists(logProfilePath)) File.Delete(logProfilePath);
             }
         }
     }

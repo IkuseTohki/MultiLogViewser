@@ -1,9 +1,6 @@
 # MultiLogViewer Configuration Template
 # ------------------------------------
 
-# 監視の更新間隔（ミリ秒）
-polling_interval_ms: 1000
-
 # 画面に表示する列の設定
 display_columns:
   - { header: "Timestamp", binding_path: "Timestamp", width: 180, string_format: "yyyy/MM/dd HH:mm:ss.fff" }
