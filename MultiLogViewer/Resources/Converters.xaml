@@ -8,5 +8,6 @@
     <converters:MultilineToVisibilityConverter x:Key="MultilineToVisibilityConverter" />
     <converters:DoubleToGridLengthConverter x:Key="DoubleToGridLengthConverter" />
     <converters:BookmarkColorToBrushConverter x:Key="BookmarkColorToBrushConverter" />
+    <converters:KeyToHeaderConverter x:Key="KeyToHeaderConverter" />
 
 </ResourceDictionary>

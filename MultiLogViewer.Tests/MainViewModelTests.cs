@@ -125,6 +125,27 @@ namespace MultiLogViewer.Tests
         }
 
         [TestMethod]
+        public async Task AddExtensionFilterCommand_SetsKeyAndDisplayText()
+        {
+            // Arrange
+            _viewModel = CreateViewModel();
+            var logs = new List<LogEntry>
+                    {
+                        new LogEntry { AdditionalData = new Dictionary<string, string> { { "TestKey", "V" } } }
+                    };
+            await SetLogsToViewModel(_viewModel, logs);
+
+            // Act
+            _viewModel.AddExtensionFilterCommand.Execute("TestKey");
+
+            // Assert
+            var filter = _viewModel.ActiveExtensionFilters.FirstOrDefault(f => f.Key == "TestKey");
+            Assert.IsNotNull(filter);
+            Assert.AreEqual("TestKey", filter.Key);
+            // 現在の設計では ViewModel は DisplayText を解決せず、初期値として key を入れる
+            Assert.AreEqual("TestKey", filter.DisplayText);
+        }
+        [TestMethod]
         public async Task RemoveExtensionFilterCommand_RemovesKeyAndRefreshesView()
         {
             // Arrange
@@ -262,6 +283,34 @@ namespace MultiLogViewer.Tests
             _mockUserDialogService.Verify(s => s.OpenFileDialog(It.IsAny<string>()), Times.Once);
         }
 
+        [TestMethod]
+        public async Task LoadPresetCommand_PreservesDisplayText()
+        {
+            // Arrange
+            _viewModel = CreateViewModel();
+            _viewModel.AvailableAdditionalDataKeys.Add("TargetKey");
+
+            var preset = new FilterPreset
+            {
+                ExtensionFilters = new List<LogFilter>
+                        {
+                            new LogFilter(FilterType.ColumnEmpty, "TargetKey", default, "SavedDisplayText")
+                        }
+            };
+
+            _mockUserDialogService.Setup(s => s.OpenFileDialog(It.IsAny<string>())).Returns("preset.yaml");
+            _mockFilterPresetService.Setup(s => s.Load("preset.yaml")).Returns(preset);
+
+            // Act
+            _viewModel.LoadPresetCommand.Execute(null);
+
+            // Assert
+            Assert.AreEqual(1, _viewModel.ActiveExtensionFilters.Count);
+            var filter = _viewModel.ActiveExtensionFilters.First();
+            Assert.AreEqual("TargetKey", filter.Key);
+            // ViewModel側での強制書き換えを廃止したため、保存されていた値が維持される
+            Assert.AreEqual("SavedDisplayText", filter.DisplayText);
+        }
         [TestMethod]
         public void LoadPresetCommand_IgnoresNonExistentKeys()
         {

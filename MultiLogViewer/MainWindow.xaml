@@ -60,7 +60,14 @@
                                     <MenuItem Header="拡張フィルターを追加" ItemsSource="{Binding AvailableAdditionalDataKeys}">
                                         <MenuItem.ItemContainerStyle>
                                             <Style TargetType="MenuItem">
-                                                <Setter Property="Header" Value="{Binding}" />
+                                                <Setter Property="Header">
+                                                    <Setter.Value>
+                                                        <MultiBinding Converter="{StaticResource KeyToHeaderConverter}">
+                                                            <Binding Path="." />
+                                                            <Binding Path="DataContext.DisplayColumns" RelativeSource="{RelativeSource AncestorType=ContextMenu}" />
+                                                        </MultiBinding>
+                                                    </Setter.Value>
+                                                </Setter>
                                                 <Setter Property="Command" Value="{Binding DataContext.AddExtensionFilterCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                                 <Setter Property="CommandParameter" Value="{Binding}" />
                                             </Style>

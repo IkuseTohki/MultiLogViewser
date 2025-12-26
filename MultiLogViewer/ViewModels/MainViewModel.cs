@@ -319,6 +319,8 @@ namespace MultiLogViewer.ViewModels
         private void AddExtensionFilter(string? key)
         {
             if (string.IsNullOrEmpty(key)) return;
+
+            // DisplayText は Converter が解決するため、ここでは key をセットする
             var newFilter = new LogFilter(FilterType.ColumnEmpty, key, default, key);
 
             // 既存にあれば削除（重複追加防止・上書き）

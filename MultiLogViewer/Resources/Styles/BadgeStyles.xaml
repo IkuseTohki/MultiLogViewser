@@ -18,7 +18,14 @@
     <DataTemplate DataType="{x:Type models:LogFilter}">
         <Border Margin="0,0,5,5" Style="{StaticResource BadgeContainerStyle}">
             <StackPanel Orientation="Horizontal">
-                <TextBlock Style="{StaticResource BadgeTextStyle}" Text="{Binding DisplayText}" />
+                <TextBlock Style="{StaticResource BadgeTextStyle}">
+                    <TextBlock.Text>
+                        <MultiBinding Converter="{StaticResource KeyToHeaderConverter}">
+                            <Binding Path="." />
+                            <Binding Path="DataContext.DisplayColumns" RelativeSource="{RelativeSource AncestorType=ItemsControl}" />
+                        </MultiBinding>
+                    </TextBlock.Text>
+                </TextBlock>
                 <Button Style="{StaticResource BadgeRemoveButtonStyle}">
                     <Path Width="6"
                           Height="6"
