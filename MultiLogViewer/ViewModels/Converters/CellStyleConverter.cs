@@ -9,6 +9,11 @@ using System.Windows;
 
 namespace MultiLogViewer.ViewModels.Converters
 {
+    /// <summary>
+    /// カラムごとのスタイル設定（StyleConfig）に基づいて、背景色や文字色を決定するコンバーター。
+    /// このコンバーターはインスタンスごとに異なる状態（StyleConfig）を保持するため、
+    /// 共通リソース（Converters.xaml）には登録せず、DataGridColumnsBehavior 等で列ごとにインスタンス化して使用します。
+    /// </summary>
     public class CellStyleConverter : IValueConverter
     {
         public ColumnStyleConfig? StyleConfig { get; set; }

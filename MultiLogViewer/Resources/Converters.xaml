@@ -9,5 +9,11 @@
     <converters:DoubleToGridLengthConverter x:Key="DoubleToGridLengthConverter" />
     <converters:BookmarkColorToBrushConverter x:Key="BookmarkColorToBrushConverter" />
     <converters:KeyToHeaderConverter x:Key="KeyToHeaderConverter" />
+    <converters:DateTimeFilterConverter x:Key="DateTimeFilterConverter" />
+
+    <!--
+        NOTE: CellStyleConverter は列ごとに個別の StyleConfig (状態) を持つ必要があるため、
+        共通リソースとしては登録せず、コード側（DataGridColumnsBehavior）でインスタンス化します。
+    -->
 
 </ResourceDictionary>

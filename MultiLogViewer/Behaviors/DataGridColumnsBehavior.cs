@@ -184,15 +184,16 @@ namespace MultiLogViewer.Behaviors
             var column = CreateStandardTextColumn(config);
             var cellStyle = new Style(typeof(DataGridCell));
             var contextMenu = new ContextMenu();
+            var dtConverter = Application.Current.FindResource("DateTimeFilterConverter") as IValueConverter;
 
             var afterItem = new MenuItem { Header = "この日時以降をフィルターに追加" };
             afterItem.SetBinding(MenuItem.CommandProperty, new Binding("DataContext.AddDateTimeFilterCommand") { Source = dataGrid });
-            afterItem.SetBinding(MenuItem.CommandParameterProperty, new Binding(".") { Converter = new DateTimeFilterConverter(), ConverterParameter = true });
+            afterItem.SetBinding(MenuItem.CommandParameterProperty, new Binding(".") { Converter = dtConverter, ConverterParameter = true });
             contextMenu.Items.Add(afterItem);
 
             var beforeItem = new MenuItem { Header = "この日時以前をフィルターに追加" };
             beforeItem.SetBinding(MenuItem.CommandProperty, new Binding("DataContext.AddDateTimeFilterCommand") { Source = dataGrid });
-            beforeItem.SetBinding(MenuItem.CommandParameterProperty, new Binding(".") { Converter = new DateTimeFilterConverter(), ConverterParameter = false });
+            beforeItem.SetBinding(MenuItem.CommandParameterProperty, new Binding(".") { Converter = dtConverter, ConverterParameter = false });
             contextMenu.Items.Add(beforeItem);
 
             cellStyle.Setters.Add(new Setter(DataGridCell.ContextMenuProperty, contextMenu));
