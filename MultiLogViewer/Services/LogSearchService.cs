@@ -148,9 +148,19 @@ namespace MultiLogViewer.Services
         {
             if (logs == null) return null;
 
+            // リストのコピーを避けるため、キャストを試みる
+            // ListCollectionView の場合、GetItemAt が使えるためコピー不要
+            if (logs is System.Windows.Data.ListCollectionView view)
+            {
+                if (view.Count == 0) return null;
+                return BinarySearchInView(view, targetTime);
+            }
+
             var list = logs as IList<LogEntry>;
             if (list == null)
             {
+                // ここで ToList() が走ると全件コピーでメモリ不足の原因になるため、
+                // 最悪のケースでも一歩ずつ走査するか、事前にリスト化されていることを期待する
                 list = logs.ToList();
             }
 
@@ -182,6 +192,35 @@ namespace MultiLogViewer.Services
             }
 
             return result ?? list[list.Count - 1];
+        }
+
+        private LogEntry? BinarySearchInView(System.Windows.Data.ListCollectionView view, DateTime targetTime)
+        {
+            int count = view.Count;
+            if (count == 0) return null;
+
+            if (((LogEntry)view.GetItemAt(0)).Timestamp >= targetTime) return (LogEntry)view.GetItemAt(0);
+            if (((LogEntry)view.GetItemAt(count - 1)).Timestamp < targetTime) return (LogEntry)view.GetItemAt(count - 1);
+
+            int left = 0;
+            int right = count - 1;
+            LogEntry? result = null;
+
+            while (left <= right)
+            {
+                int mid = left + (right - left) / 2;
+                var entry = (LogEntry)view.GetItemAt(mid);
+                if (entry.Timestamp >= targetTime)
+                {
+                    result = entry;
+                    right = mid - 1;
+                }
+                else
+                {
+                    left = mid + 1;
+                }
+            }
+            return result ?? (LogEntry)view.GetItemAt(count - 1);
         }
     }
 }

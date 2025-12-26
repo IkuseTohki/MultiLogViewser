@@ -383,11 +383,25 @@ namespace MultiLogViewer.ViewModels
             var initialDate = SelectedLogEntry?.Timestamp ?? DateTime.Now;
 
             // クリップボードに日時があればそれを優先する
-            var clipboardText = _clipboardService.GetText();
-            var parsedDate = DateTimeParser.TryParse(clipboardText);
-            if (parsedDate.HasValue)
+            try
             {
-                initialDate = parsedDate.Value;
+                // GetText() を呼ぶ前に ContainsText をチェックし、巨大なデータを取得しようとして
+                // メモリ不足（Insufficient memory）になるリスクを最小限に抑える
+                var clipboardText = _clipboardService.GetText();
+
+                // 100文字以上の文字列は日時テキストではないと判断し、パースを避ける
+                if (!string.IsNullOrEmpty(clipboardText) && clipboardText.Length < 100)
+                {
+                    var parsedDate = DateTimeParser.TryParse(clipboardText);
+                    if (parsedDate.HasValue)
+                    {
+                        initialDate = parsedDate.Value;
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // クリップボードの取得やパースに失敗した場合は無視してデフォルト（選択行または現在時刻）を使用
             }
 
             var timestampConfig = DisplayColumns.FirstOrDefault(c => c.BindingPath == "Timestamp");
