@@ -1022,6 +1022,26 @@ namespace MultiLogViewer.Tests
             Assert.IsTrue(_viewModel.SelectedLogEntry.IsBookmarked);
         }
 
+        [TestMethod]
+        public async Task Initialize_SortsByTimestampByDefault()
+        {
+            // Arrange
+            _viewModel = CreateViewModel();
+            var logs = new List<LogEntry>
+            {
+                new LogEntry { Message = "Later", Timestamp = new DateTime(2023, 1, 1, 12, 0, 1), SequenceNumber = 2 },
+                new LogEntry { Message = "Earlier", Timestamp = new DateTime(2023, 1, 1, 12, 0, 0), SequenceNumber = 1 }
+            };
+
+            // Act
+            await SetLogsToViewModel(_viewModel, logs);
+
+            // Assert
+            var sortedLogs = _viewModel.LogEntriesView.Cast<LogEntry>().ToList();
+            Assert.AreEqual("Earlier", sortedLogs[0].Message);
+            Assert.AreEqual("Later", sortedLogs[1].Message);
+        }
+
         private async Task SetLogsToViewModel(MainViewModel vm, List<LogEntry> logs)
         {
             var result = new LogDataResult(logs, new List<DisplayColumnConfig>(), new List<FileState>());

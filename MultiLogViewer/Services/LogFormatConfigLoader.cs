@@ -27,6 +27,7 @@ namespace MultiLogViewer.Services
                         if (appSettings != null)
                         {
                             appConfig.PollingIntervalMs = appSettings.PollingIntervalMs;
+                            appConfig.LogRetentionLimit = appSettings.LogRetentionLimit;
                         }
                     }
                 }

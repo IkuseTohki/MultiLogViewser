@@ -174,6 +174,31 @@ namespace MultiLogViewer.Tests
         }
 
         /// <summary>
+        /// テスト観点: log_retention_limit が AppSettings.yaml から正しく読み込まれることを確認する。
+        /// </summary>
+        [TestMethod]
+        public void LoadConfig_RetentionLimit_ReturnsValue()
+        {
+            // Arrange
+            var appSettingsPath = Path.Combine(Path.GetTempPath(), "test_retention_settings.yaml");
+            File.WriteAllText(appSettingsPath, "log_retention_limit: \"-1w\"");
+            var loader = new LogFormatConfigLoader();
+
+            try
+            {
+                // Act
+                var config = loader.Load("", appSettingsPath);
+
+                // Assert
+                Assert.AreEqual("-1w", config.LogRetentionLimit);
+            }
+            finally
+            {
+                if (File.Exists(appSettingsPath)) File.Delete(appSettingsPath);
+            }
+        }
+
+        /// <summary>
         /// テスト観点: 不正な形式のYAMLファイルを読み込んだ際、ユーザー向けの親切なエラーメッセージを含む例外が投げられることを確認する。
         /// </summary>
         [TestMethod]

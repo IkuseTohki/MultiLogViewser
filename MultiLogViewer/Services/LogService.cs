@@ -10,17 +10,20 @@ namespace MultiLogViewer.Services
         private readonly IFileResolver _fileResolver;
         private readonly ILogFileReader _logFileReader;
         private readonly IConfigPathResolver _configPathResolver;
+        private readonly ITimeProvider _timeProvider;
 
         public LogService(
             ILogFormatConfigLoader logFormatConfigLoader,
             IFileResolver fileResolver,
             ILogFileReader logFileReader,
-            IConfigPathResolver configPathResolver)
+            IConfigPathResolver configPathResolver,
+            ITimeProvider timeProvider)
         {
             _logFormatConfigLoader = logFormatConfigLoader;
             _fileResolver = fileResolver;
             _logFileReader = logFileReader;
             _configPathResolver = configPathResolver;
+            _timeProvider = timeProvider;
         }
 
         public LogDataResult LoadFromConfig(string configPath)
@@ -36,6 +39,9 @@ namespace MultiLogViewer.Services
             var fileStates = new List<FileState>();
             long currentSequence = 0;
 
+            var calculator = new Utils.RetentionLimitCalculator(_timeProvider);
+            var limit = calculator.Calculate(appConfig.LogRetentionLimit);
+
             if (appConfig.LogFormats != null)
             {
                 // ファイルパスごとのConfigリストを作成
@@ -49,12 +55,12 @@ namespace MultiLogViewer.Services
 
                     var (entries, state) = _logFileReader.ReadIncremental(new FileState(path, 0, 0), configs);
 
-                    foreach (var entry in entries)
+                    foreach (var entry in entries.Where(e => e.Timestamp >= limit))
                     {
                         entry.SequenceNumber = currentSequence++;
+                        allEntries.Add(entry);
                     }
 
-                    allEntries.AddRange(entries);
                     fileStates.Add(state);
                 }
             }
@@ -91,6 +97,9 @@ namespace MultiLogViewer.Services
             var updatedStates = new List<FileState>();
             long currentSequence = startSequenceNumber;
 
+            var calculator = new Utils.RetentionLimitCalculator(_timeProvider);
+            var limit = calculator.Calculate(appConfig.LogRetentionLimit);
+
             // ファイルパスごとのConfigリストを作成
             var fileConfigs = ResolveFileConfigs(appConfig.LogFormats);
 
@@ -104,12 +113,12 @@ namespace MultiLogViewer.Services
 
                 var (entries, state) = _logFileReader.ReadIncremental(currentState, configs);
 
-                foreach (var entry in entries)
+                foreach (var entry in entries.Where(e => e.Timestamp >= limit))
                 {
                     entry.SequenceNumber = currentSequence++;
+                    newEntries.Add(entry);
                 }
 
-                newEntries.AddRange(entries);
                 updatedStates.Add(state);
             }
 

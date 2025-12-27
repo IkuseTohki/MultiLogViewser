@@ -9,6 +9,7 @@ namespace MultiLogViewer.Services
     public interface ITimeProvider
     {
         DateTime Now { get; }
+        DateTime Today { get; }
     }
 
     /// <summary>
@@ -17,5 +18,6 @@ namespace MultiLogViewer.Services
     public class SystemTimeProvider : ITimeProvider
     {
         public DateTime Now => DateTime.Now;
+        public DateTime Today => DateTime.Today;
     }
 }
