@@ -122,11 +122,13 @@ namespace MultiLogViewer.Behaviors
             // ブックマーク専用コンテキストメニュー
             var contextMenu = new ContextMenu();
             var boolToVis = Application.Current.FindResource("BooleanToVisibilityConverter") as IValueConverter;
+            var boolInvert = Application.Current.FindResource("BooleanInvertConverter") as IValueConverter;
 
             var filterItem = new MenuItem { Header = "拡張フィルターに追加" };
             filterItem.SetBinding(MenuItem.CommandProperty, new Binding("DataContext.AddBookmarkFilterCommand") { Source = dataGrid });
             filterItem.SetBinding(MenuItem.CommandParameterProperty, new Binding("BookmarkColor"));
             filterItem.SetBinding(MenuItem.VisibilityProperty, new Binding("IsBookmarked") { Converter = boolToVis });
+            filterItem.SetBinding(MenuItem.IsEnabledProperty, new Binding("DataContext.IsTailEnabled") { Source = dataGrid, Converter = boolInvert });
             contextMenu.Items.Add(filterItem);
 
             var clearItem = new MenuItem { Header = "ブックマークをすべて解除" };
@@ -185,15 +187,18 @@ namespace MultiLogViewer.Behaviors
             var cellStyle = new Style(typeof(DataGridCell));
             var contextMenu = new ContextMenu();
             var dtConverter = Application.Current.FindResource("DateTimeFilterConverter") as IValueConverter;
+            var boolInvert = Application.Current.FindResource("BooleanInvertConverter") as IValueConverter;
 
             var afterItem = new MenuItem { Header = "この日時以降をフィルターに追加" };
             afterItem.SetBinding(MenuItem.CommandProperty, new Binding("DataContext.AddDateTimeFilterCommand") { Source = dataGrid });
             afterItem.SetBinding(MenuItem.CommandParameterProperty, new Binding(".") { Converter = dtConverter, ConverterParameter = true });
+            afterItem.SetBinding(MenuItem.IsEnabledProperty, new Binding("DataContext.IsTailEnabled") { Source = dataGrid, Converter = boolInvert });
             contextMenu.Items.Add(afterItem);
 
             var beforeItem = new MenuItem { Header = "この日時以前をフィルターに追加" };
             beforeItem.SetBinding(MenuItem.CommandProperty, new Binding("DataContext.AddDateTimeFilterCommand") { Source = dataGrid });
             beforeItem.SetBinding(MenuItem.CommandParameterProperty, new Binding(".") { Converter = dtConverter, ConverterParameter = false });
+            beforeItem.SetBinding(MenuItem.IsEnabledProperty, new Binding("DataContext.IsTailEnabled") { Source = dataGrid, Converter = boolInvert });
             contextMenu.Items.Add(beforeItem);
 
             cellStyle.Setters.Add(new Setter(DataGridCell.ContextMenuProperty, contextMenu));

@@ -28,6 +28,7 @@ namespace MultiLogViewer.Services
                         {
                             appConfig.PollingIntervalMs = appSettings.PollingIntervalMs;
                             appConfig.LogRetentionLimit = appSettings.LogRetentionLimit;
+                            appConfig.SkipTailModeWarning = appSettings.SkipTailModeWarning;
                         }
                     }
                 }

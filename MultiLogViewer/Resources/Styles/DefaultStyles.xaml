@@ -215,4 +215,36 @@
         <Setter Property="Padding" Value="0" />
     </Style>
 
+    <!-- Dialog Styles -->
+    <Style x:Key="DialogTitleStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Margin" Value="10,0,0,0" />
+    </Style>
+
+    <Style x:Key="DialogContentTextStyle" TargetType="TextBlock">
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="LineHeight" Value="20" />
+        <Setter Property="Margin" Value="0,0,0,10" />
+    </Style>
+
+    <Style x:Key="WarningIconStyle" TargetType="Path">
+        <Setter Property="Width" Value="24" />
+        <Setter Property="Height" Value="24" />
+        <Setter Property="Fill" Value="#FFA000" />
+        <Setter Property="Stretch" Value="Uniform" />
+        <Setter Property="Data" Value="M12,2L1,21H23L12,2M12,6L19.53,19H4.47L12,6M11,10V14H13V10H11M11,16V18H13V16H11Z" />
+    </Style>
+
+    <Style x:Key="PrimaryActionButtonStyle"
+           BasedOn="{StaticResource {x:Type Button}}"
+           TargetType="Button">
+        <Setter Property="Width" Value="100" />
+        <Setter Property="Height" Value="28" />
+        <Setter Property="Background" Value="{StaticResource PrimaryHueMidBrush}" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+
 </ResourceDictionary>

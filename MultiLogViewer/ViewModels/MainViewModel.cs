@@ -25,11 +25,14 @@ namespace MultiLogViewer.ViewModels
         private readonly IDispatcherService _dispatcherService;
         private readonly ITaskRunner _taskRunner;
         private readonly IGoToDateDialogService _goToDateDialogService;
+        private readonly ITailModeWarningDialogService _tailModeWarningDialogService;
+        private readonly IAppSettingsService _appSettingsService;
 
         private string _configPath = string.Empty;
         private List<FileState> _fileStates = new List<FileState>();
 
         private int _pollingIntervalMs = 1000;
+        private bool _skipTailModeWarning = false;
         private readonly System.Windows.Threading.DispatcherTimer _tailTimer;
 
         private readonly RangeObservableCollection<LogEntry> _logEntries = new RangeObservableCollection<LogEntry>();
@@ -41,11 +44,73 @@ namespace MultiLogViewer.ViewModels
             get => _isTailEnabled;
             set
             {
+                if (_isTailEnabled == value) return;
+
+                if (value && !_skipTailModeWarning)
+                {
+                    if (_tailModeWarningDialogService.ShowWarning(out bool skipNextTime))
+                    {
+                        if (skipNextTime)
+                        {
+                            _skipTailModeWarning = true;
+                            SaveSkipWarningSetting();
+                        }
+                    }
+                    else
+                    {
+                        // ユーザーがキャンセルした場合は、View側（ToggleButton）のチェックを戻すため通知のみ行う
+                        OnPropertyChanged(nameof(IsTailEnabled));
+                        return;
+                    }
+                }
+
                 if (SetProperty(ref _isTailEnabled, value))
                 {
-                    if (value) _tailTimer.Start();
-                    else _tailTimer.Stop();
+                    if (value)
+                    {
+                        // Tail モード有効化時の自動調整
+                        ApplyTailModeAdjustments();
+                        _tailTimer.Start();
+                    }
+                    else
+                    {
+                        _tailTimer.Stop();
+                    }
                 }
+            }
+        }
+
+        private void SaveSkipWarningSetting()
+        {
+            try
+            {
+                var settings = _appSettingsService.Load();
+                settings.SkipTailModeWarning = true;
+                _appSettingsService.Save(settings);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to save settings: {ex.Message}");
+            }
+        }
+
+        private void ApplyTailModeAdjustments()
+        {
+            // 1. ソート順を Timestamp の昇順にリセット
+            LogEntriesView.SortDescriptions.Clear();
+            LogEntriesView.SortDescriptions.Add(new SortDescription("Timestamp", ListSortDirection.Ascending));
+            LogEntriesView.SortDescriptions.Add(new SortDescription("SequenceNumber", ListSortDirection.Ascending));
+
+            // 2. ブックマークフィルターおよび日時フィルターを解除
+            var filtersToRemove = ActiveExtensionFilters
+                .Where(f => f.Type == FilterType.Bookmark ||
+                            f.Type == FilterType.DateTimeAfter ||
+                            f.Type == FilterType.DateTimeBefore)
+                .ToList();
+
+            foreach (var filter in filtersToRemove)
+            {
+                ActiveExtensionFilters.Remove(filter);
             }
         }
 
@@ -185,7 +250,9 @@ namespace MultiLogViewer.ViewModels
             IFilterPresetService filterPresetService,
             IDispatcherService dispatcherService,
             ITaskRunner taskRunner,
-            IGoToDateDialogService goToDateDialogService)
+            IGoToDateDialogService goToDateDialogService,
+            ITailModeWarningDialogService tailModeWarningDialogService,
+            IAppSettingsService appSettingsService)
         {
             _logService = logService;
             _userDialogService = userDialogService;
@@ -197,6 +264,8 @@ namespace MultiLogViewer.ViewModels
             _dispatcherService = dispatcherService;
             _taskRunner = taskRunner;
             _goToDateDialogService = goToDateDialogService;
+            _tailModeWarningDialogService = tailModeWarningDialogService;
+            _appSettingsService = appSettingsService;
 
             LogEntriesView = new ListCollectionView(_logEntries);
             LogEntriesView.SortDescriptions.Add(new System.ComponentModel.SortDescription("Timestamp", System.ComponentModel.ListSortDirection.Ascending));
@@ -345,6 +414,7 @@ namespace MultiLogViewer.ViewModels
 
             var result = _logService.LoadIncremental(_configPath, _fileStates, _logEntries.Count);
             _fileStates = result.FileStates;
+            _skipTailModeWarning = result.SkipTailModeWarning;
 
             if (result.Entries.Any())
             {
@@ -706,6 +776,7 @@ namespace MultiLogViewer.ViewModels
                 {
                     _fileStates = result.FileStates;
                     _pollingIntervalMs = result.PollingIntervalMs;
+                    _skipTailModeWarning = result.SkipTailModeWarning;
                     _tailTimer.Interval = TimeSpan.FromMilliseconds(_pollingIntervalMs);
 
                     // DisplayColumns を設定

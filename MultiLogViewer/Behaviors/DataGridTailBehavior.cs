@@ -26,6 +26,28 @@ namespace MultiLogViewer.Behaviors
         public static bool GetMonitorScroll(DependencyObject obj) => (bool)obj.GetValue(MonitorScrollProperty);
         public static void SetMonitorScroll(DependencyObject obj, bool value) => obj.SetValue(MonitorScrollProperty, value);
 
+        public static readonly DependencyProperty ClearSortVisualsOnTailProperty =
+            DependencyProperty.RegisterAttached(
+                "ClearSortVisualsOnTail",
+                typeof(bool),
+                typeof(DataGridTailBehavior),
+                new PropertyMetadata(false, OnClearSortVisualsOnTailChanged));
+
+        public static bool GetClearSortVisualsOnTail(DependencyObject obj) => (bool)obj.GetValue(ClearSortVisualsOnTailProperty);
+        public static void SetClearSortVisualsOnTail(DependencyObject obj, bool value) => obj.SetValue(ClearSortVisualsOnTailProperty, value);
+
+        private static void OnClearSortVisualsOnTailChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            if (d is DataGrid dataGrid && (bool)e.NewValue)
+            {
+                // IsTailEnabled (ViewModel) が変更されたら列のソート表示をクリアする
+                foreach (var column in dataGrid.Columns)
+                {
+                    column.SortDirection = null;
+                }
+            }
+        }
+
         private static void OnMonitorScrollChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             if (d is DataGrid dataGrid)

@@ -1,0 +1,62 @@
+﻿<Window x:Class="MultiLogViewer.TailModeWarningWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:behaviors="clr-namespace:MultiLogViewer.Behaviors"
+        Title="Tailモードの有効化"
+        Width="400"
+        Height="Auto"
+        behaviors:DialogCloser.DialogResult="{Binding DialogResult}"
+        Background="{StaticResource WindowBackgroundBrush}"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterOwner">
+    <Border Padding="20"
+            BorderBrush="{StaticResource BorderBrush}"
+            BorderThickness="1">
+        <StackPanel>
+            <StackPanel Margin="0,0,0,15" Orientation="Horizontal">
+                <Path Style="{StaticResource WarningIconStyle}" />
+                <TextBlock Style="{StaticResource DialogTitleStyle}" Text="Tailモードを有効にしますか？" />
+            </StackPanel>
+
+            <TextBlock Style="{StaticResource DialogContentTextStyle}">
+                Tailモードを有効にすると、最新のログを正しく表示し続けるため、自動的に以下の調整が行われます：
+            </TextBlock>
+
+            <BulletDecorator Margin="10,0,0,5">
+                <BulletDecorator.Bullet>
+                    <Ellipse Width="4"
+                             Height="4"
+                             Fill="{StaticResource PrimaryHueMidBrush}" />
+                </BulletDecorator.Bullet>
+                <TextBlock Margin="5,0,0,0">ソート順を「日時の昇順」にリセット</TextBlock>
+            </BulletDecorator>
+            <BulletDecorator Margin="10,0,0,15">
+                <BulletDecorator.Bullet>
+                    <Ellipse Width="4"
+                             Height="4"
+                             Fill="{StaticResource PrimaryHueMidBrush}" />
+                </BulletDecorator.Bullet>
+                <TextBlock Margin="5,0,0,0">「ブックマーク」と「日時範囲」のフィルタを解除</TextBlock>
+            </BulletDecorator>
+
+            <CheckBox Margin="0,0,0,20"
+                      Content="次回からこのメッセージを表示しない"
+                      IsChecked="{Binding SkipNextTime}" />
+
+            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                <Button Width="80"
+                        Height="28"
+                        Margin="0,0,10,0"
+                        Content="キャンセル"
+                        IsCancel="True"
+                        Style="{StaticResource IconButtonStyle}" />
+                <Button Command="{Binding EnableCommand}"
+                        Content="有効にする"
+                        IsDefault="True"
+                        Style="{StaticResource PrimaryActionButtonStyle}" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

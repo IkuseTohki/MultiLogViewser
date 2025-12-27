@@ -57,7 +57,9 @@
                                 ToolTip="拡張フィルター">
                             <Button.ContextMenu>
                                 <ContextMenu>
-                                    <MenuItem Header="拡張フィルターを追加" ItemsSource="{Binding AvailableAdditionalDataKeys}">
+                                    <MenuItem Header="拡張フィルターを追加"
+                                              IsEnabled="True"
+                                              ItemsSource="{Binding AvailableAdditionalDataKeys}">
                                         <MenuItem.ItemContainerStyle>
                                             <Style TargetType="MenuItem">
                                                 <Setter Property="Header">
@@ -73,7 +75,7 @@
                                             </Style>
                                         </MenuItem.ItemContainerStyle>
                                     </MenuItem>
-                                    <MenuItem Header="Bookmarkフィルターを追加">
+                                    <MenuItem Header="Bookmarkフィルターを追加" IsEnabled="{Binding IsTailEnabled, Converter={StaticResource BooleanInvertConverter}}">
                                         <MenuItem Command="{Binding AddBookmarkFilterCommand}" Header="すべて (All)">
                                             <MenuItem.Icon>
                                                 <Rectangle Width="12"
@@ -289,10 +291,12 @@
                 <DataGrid behaviors:DataGridColumnsBehavior.BindableColumns="{Binding DisplayColumns}"
                           behaviors:DataGridScrollToSelectionBehavior.AutoScrollOnCollectionChanged="True"
                           behaviors:DataGridScrollToSelectionBehavior.SelectedItem="{Binding SelectedLogEntry}"
+                          behaviors:DataGridTailBehavior.ClearSortVisualsOnTail="{Binding IsTailEnabled}"
                           behaviors:DataGridTailBehavior.IsAtBottom="{Binding IsAtBottom}"
                           behaviors:DataGridTailBehavior.MonitorScroll="True"
                           CanUserReorderColumns="True"
                           CanUserResizeColumns="True"
+                          CanUserSortColumns="{Binding IsTailEnabled, Converter={StaticResource BooleanInvertConverter}}"
                           HeadersVisibility="Column"
                           ItemsSource="{Binding LogEntriesView}"
                           SelectedItem="{Binding SelectedLogEntry, Mode=TwoWay}" />

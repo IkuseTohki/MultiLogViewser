@@ -11,13 +11,15 @@ namespace MultiLogViewer.Models
         public List<DisplayColumnConfig> DisplayColumns { get; }
         public List<FileState> FileStates { get; }
         public int PollingIntervalMs { get; }
+        public bool SkipTailModeWarning { get; }
 
-        public LogDataResult(List<LogEntry> entries, List<DisplayColumnConfig> displayColumns, List<FileState> fileStates, int pollingIntervalMs = 1000)
+        public LogDataResult(List<LogEntry> entries, List<DisplayColumnConfig> displayColumns, List<FileState> fileStates, int pollingIntervalMs = 1000, bool skipTailModeWarning = false)
         {
             Entries = entries;
             DisplayColumns = displayColumns;
             FileStates = fileStates;
             PollingIntervalMs = pollingIntervalMs;
+            SkipTailModeWarning = skipTailModeWarning;
         }
     }
 }

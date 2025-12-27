@@ -11,6 +11,9 @@ namespace MultiLogViewer.Models
         [YamlMember(Alias = "log_retention_limit")]
         public string? LogRetentionLimit { get; set; }
 
+        [YamlMember(Alias = "skip_tail_mode_warning")]
+        public bool SkipTailModeWarning { get; set; }
+
         [YamlMember(Alias = "display_columns")]
         public List<DisplayColumnConfig> DisplayColumns { get; set; } = new List<DisplayColumnConfig>();
 

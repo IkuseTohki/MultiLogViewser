@@ -81,7 +81,7 @@ namespace MultiLogViewer.Services
                 }
             }
 
-            return new LogDataResult(sortedEntries, displayColumns, fileStates, appConfig.PollingIntervalMs);
+            return new LogDataResult(sortedEntries, displayColumns, fileStates, appConfig.PollingIntervalMs, appConfig.SkipTailModeWarning);
         }
 
         public LogDataResult LoadIncremental(string configPath, List<FileState> currentStates, long startSequenceNumber)
@@ -131,7 +131,7 @@ namespace MultiLogViewer.Services
                 }
             }
 
-            return new LogDataResult(newEntries.OrderBy(e => e.Timestamp).ThenBy(e => e.SequenceNumber).ToList(), new List<DisplayColumnConfig>(), updatedStates, appConfig.PollingIntervalMs);
+            return new LogDataResult(newEntries.OrderBy(e => e.Timestamp).ThenBy(e => e.SequenceNumber).ToList(), new List<DisplayColumnConfig>(), updatedStates, appConfig.PollingIntervalMs, appConfig.SkipTailModeWarning);
         }
 
         private Dictionary<string, List<LogFormatConfig>> ResolveFileConfigs(IEnumerable<LogFormatConfig> logFormats)

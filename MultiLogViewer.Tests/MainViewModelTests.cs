@@ -6,6 +6,7 @@ using MultiLogViewer.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -24,6 +25,8 @@ namespace MultiLogViewer.Tests
         private Mock<IDispatcherService> _mockDispatcherService = null!;
         private Mock<ITaskRunner> _mockTaskRunner = null!;
         private Mock<IGoToDateDialogService> _mockGoToDateDialogService = null!;
+        private Mock<ITailModeWarningDialogService> _mockTailModeWarningDialogService = null!;
+        private Mock<IAppSettingsService> _mockAppSettingsService = null!;
         private MainViewModel _viewModel = null!;
 
         [TestInitialize]
@@ -39,6 +42,8 @@ namespace MultiLogViewer.Tests
             _mockDispatcherService = new Mock<IDispatcherService>();
             _mockTaskRunner = new Mock<ITaskRunner>();
             _mockGoToDateDialogService = new Mock<IGoToDateDialogService>();
+            _mockTailModeWarningDialogService = new Mock<ITailModeWarningDialogService>();
+            _mockAppSettingsService = new Mock<IAppSettingsService>();
 
             // Dispatcher: テストスレッドで即時実行
             _mockDispatcherService.Setup(d => d.Invoke(It.IsAny<Action>())).Callback<Action>(a => a());
@@ -51,6 +56,11 @@ namespace MultiLogViewer.Tests
                     a();
                     return Task.CompletedTask;
                 });
+
+            // DialogService: デフォルトでは続行を返す
+            bool skip;
+            _mockTailModeWarningDialogService.Setup(s => s.ShowWarning(out skip)).Returns(true);
+            _mockAppSettingsService.Setup(s => s.Load()).Returns(new AppSettings());
         }
 
         private MainViewModel CreateViewModel()
@@ -65,7 +75,9 @@ namespace MultiLogViewer.Tests
                 _mockFilterPresetService.Object,
                 _mockDispatcherService.Object,
                 _mockTaskRunner.Object,
-                _mockGoToDateDialogService.Object);
+                _mockGoToDateDialogService.Object,
+                _mockTailModeWarningDialogService.Object,
+                _mockAppSettingsService.Object);
         }
 
         [TestMethod]
@@ -1025,22 +1037,68 @@ namespace MultiLogViewer.Tests
         [TestMethod]
         public async Task Initialize_SortsByTimestampByDefault()
         {
+            // ... (existing test)
+        }
+
+        [TestMethod]
+        public void IsTailEnabled_WhenSetToTrue_ResetsSortAndClearsSpecificFilters()
+        {
             // Arrange
             _viewModel = CreateViewModel();
-            var logs = new List<LogEntry>
-            {
-                new LogEntry { Message = "Later", Timestamp = new DateTime(2023, 1, 1, 12, 0, 1), SequenceNumber = 2 },
-                new LogEntry { Message = "Earlier", Timestamp = new DateTime(2023, 1, 1, 12, 0, 0), SequenceNumber = 1 }
-            };
+
+            // 1. 意図的にソート順を変えておく（降順にする）
+            _viewModel.LogEntriesView.SortDescriptions.Clear();
+            _viewModel.LogEntriesView.SortDescriptions.Add(new SortDescription("Timestamp", ListSortDirection.Descending));
+
+            // 2. 解除対象のフィルターを追加しておく
+            var bookmarkFilter = new BookmarkFilter(null);
+            var dateFilter = new LogFilter(FilterType.DateTimeAfter, "", DateTime.Now, "Date");
+            var columnFilter = new LogFilter(FilterType.ColumnEmpty, "Level", default, "Level");
+
+            _viewModel.ActiveExtensionFilters.Add(bookmarkFilter);
+            _viewModel.ActiveExtensionFilters.Add(dateFilter);
+            _viewModel.ActiveExtensionFilters.Add(columnFilter);
 
             // Act
-            await SetLogsToViewModel(_viewModel, logs);
+            _viewModel.IsTailEnabled = true;
 
             // Assert
-            var sortedLogs = _viewModel.LogEntriesView.Cast<LogEntry>().ToList();
-            Assert.AreEqual("Earlier", sortedLogs[0].Message);
-            Assert.AreEqual("Later", sortedLogs[1].Message);
+            // ソートが昇順にリセットされていること (Timestamp + SequenceNumber)
+            Assert.AreEqual(2, _viewModel.LogEntriesView.SortDescriptions.Count);
+            Assert.AreEqual("Timestamp", _viewModel.LogEntriesView.SortDescriptions[0].PropertyName);
+            Assert.AreEqual(ListSortDirection.Ascending, _viewModel.LogEntriesView.SortDescriptions[0].Direction);
+            Assert.AreEqual("SequenceNumber", _viewModel.LogEntriesView.SortDescriptions[1].PropertyName);
+
+            // ブックマークと日時のフィルターが解除され、カラムフィルターだけが残っていること
+            Assert.AreEqual(1, _viewModel.ActiveExtensionFilters.Count);
+            Assert.IsFalse(_viewModel.ActiveExtensionFilters.Contains(bookmarkFilter));
+            Assert.IsFalse(_viewModel.ActiveExtensionFilters.Contains(dateFilter));
+            Assert.IsTrue(_viewModel.ActiveExtensionFilters.Contains(columnFilter));
         }
+
+        [TestMethod]
+        public void IsTailEnabled_WhenWarningConfirmedWithSkip_SavesSetting()
+        {
+            // Arrange
+            _viewModel = CreateViewModel();
+            bool skip;
+            // ユーザーが「有効にする」を選び、「次回以降スキップ」にチェックを入れたシミュレーション
+            _mockTailModeWarningDialogService.Setup(s => s.ShowWarning(out skip))
+                .Callback(new OutAction<bool>((out bool s) => s = true))
+                .Returns(true);
+
+            _mockAppSettingsService.Setup(s => s.Load()).Returns(new AppSettings { SkipTailModeWarning = false });
+
+            // Act
+            _viewModel.IsTailEnabled = true;
+
+            // Assert
+            // 設定保存が呼び出されたことを確認
+            _mockAppSettingsService.Verify(s => s.Save(It.Is<AppSettings>(st => st.SkipTailModeWarning == true)), Times.Once);
+        }
+
+        // Moq で out パラメータを扱うための補助デリゲート
+        delegate void OutAction<T>(out T result);
 
         private async Task SetLogsToViewModel(MainViewModel vm, List<LogEntry> logs)
         {
