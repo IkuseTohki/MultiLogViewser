@@ -431,22 +431,33 @@
                                    FontWeight="Bold"
                                    Foreground="{StaticResource PrimaryHueMidBrush}"
                                    Text="Bookmarks" />
-                        <Button HorizontalAlignment="Right"
-                                Command="{Binding OpenDigestCommand}"
-                                Style="{StaticResource IconButtonStyle}"
-                                ToolTip="Show Analysis Digest">
-                            <Path Width="14"
-                                  Height="14"
-                                  Data="{StaticResource MultilineIconGeometry}"
-                                  Fill="{StaticResource PrimaryHueMidBrush}"
-                                  Stretch="Uniform" />
-                        </Button>
+                        <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                            <Button Margin="0,0,5,0"
+                                    Command="{Binding ClearBookmarksCommand}"
+                                    Style="{StaticResource IconButtonStyle}"
+                                    ToolTip="Clear all bookmarks">
+                                <Path Width="12"
+                                      Height="12"
+                                      Data="{StaticResource ClearBookmarksIconGeometry}"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Stretch="Uniform" />
+                            </Button>
+                            <Button Command="{Binding OpenDigestCommand}"
+                                    Style="{StaticResource IconButtonStyle}"
+                                    ToolTip="Show Analysis Digest">
+                                <Path Width="14"
+                                      Height="14"
+                                      Data="{StaticResource DigestIconGeometry}"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      Stretch="Uniform" />
+                            </Button>
+                        </StackPanel>
                     </Grid>
 
                     <!-- Memo & Color Editor (Shared Area) -->
                     <Grid Grid.Row="1"
                           Margin="0,0,0,10"
-                          Visibility="{Binding SelectedLogEntry.IsBookmarked, Converter={StaticResource BooleanToVisibilityConverter}}">
+                          IsEnabled="{Binding SelectedLogEntry.IsBookmarked}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
@@ -531,8 +542,8 @@
                     <ListBox Grid.Row="2"
                              Background="Transparent"
                              BorderThickness="0"
-                             ItemsSource="{Binding BookmarkedEntries}"
-                             SelectedItem="{Binding SelectedLogEntry}">
+                             IsSynchronizedWithCurrentItem="True"
+                             ItemsSource="{Binding BookmarkedEntries}">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <Grid Margin="0,2">

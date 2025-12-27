@@ -22,6 +22,13 @@ namespace MultiLogViewer.Models
             set => SetProperty(ref _isBookmarked, value);
         }
 
+        private bool _isSelected;
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set => SetProperty(ref _isSelected, value);
+        }
+
         private BookmarkColor _bookmarkColor = BookmarkColor.Blue;
         public BookmarkColor BookmarkColor
         {

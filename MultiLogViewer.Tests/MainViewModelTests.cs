@@ -897,6 +897,131 @@ namespace MultiLogViewer.Tests
             Assert.AreEqual(BookmarkColor.Blue, filters2[0].TargetColor, "Should replace with Blue filter.");
         }
 
+        [TestMethod]
+        public async Task SelectedLogEntry_WhenChanged_RaisesPropertyChanged()
+        {
+            // Arrange
+            _viewModel = CreateViewModel();
+            var entry1 = new LogEntry { Message = "1" };
+            var entry2 = new LogEntry { Message = "2" };
+            await SetLogsToViewModel(_viewModel, new List<LogEntry> { entry1, entry2 });
+
+            bool raised = false;
+            _viewModel.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(MainViewModel.SelectedLogEntry)) raised = true;
+            };
+
+            // Act
+            _viewModel.SelectedLogEntry = entry1;
+
+            // Assert
+            Assert.IsTrue(raised, "PropertyChanged should be raised for SelectedLogEntry.");
+            Assert.AreEqual(entry1, _viewModel.SelectedLogEntry);
+        }
+
+        [TestMethod]
+        public async Task BookmarkSelection_WhenCurrentItemChangesInSidebar_SyncsToSelectedLogEntry()
+        {
+            // Arrange
+            _viewModel = CreateViewModel();
+            var entry1 = new LogEntry { Message = "B1", IsBookmarked = true };
+            var entry2 = new LogEntry { Message = "B2", IsBookmarked = true };
+            await SetLogsToViewModel(_viewModel, new List<LogEntry> { entry1, entry2 });
+
+            // SetLogsToViewModel 内で Initialize が呼ばれ、エントリが ViewModel 内のコレクションにコピーされる。
+            // 参照比較でパスさせるため、ViewModel内のインスタンスを取得し直す。
+            var logsInVm = _viewModel.LogEntriesView.Cast<LogEntry>().ToList();
+            var target = logsInVm.First(l => l.Message == "B2");
+
+            // Act
+            _viewModel.BookmarkedEntries.MoveCurrentTo(target);
+
+            // Assert
+            Assert.AreEqual(target, _viewModel.SelectedLogEntry, "Selection should sync from sidebar to main.");
+        }
+
+        [TestMethod]
+        public async Task BookmarkSelection_WhenSingleBookmarkExists_AndSelectionMovesToIt_SyncsCorrectly()
+        {
+            // Arrange
+            _viewModel = CreateViewModel();
+            var entryA = new LogEntry { Message = "Bookmarked", IsBookmarked = true };
+            var entryB = new LogEntry { Message = "Not Bookmarked", IsBookmarked = false };
+            await SetLogsToViewModel(_viewModel, new List<LogEntry> { entryA, entryB });
+
+            var logsInVm = _viewModel.LogEntriesView.Cast<LogEntry>().ToList();
+            var targetA = logsInVm.First(l => l.Message == "Bookmarked");
+            var targetB = logsInVm.First(l => l.Message == "Not Bookmarked");
+
+            // 1. 最初は未ブックマークの行を選択
+            _viewModel.SelectedLogEntry = targetB;
+            Assert.AreEqual(targetB, _viewModel.SelectedLogEntry);
+
+            // 2. サイドパネルで唯一の項目を選択（CurrentItemを移動）
+            _viewModel.BookmarkedEntries.MoveCurrentTo(targetA);
+
+            // Assert
+            Assert.AreEqual(targetA, _viewModel.SelectedLogEntry, "SelectedLogEntry should be updated to the bookmarked entry when current item changes.");
+        }
+
+        [TestMethod]
+        public async Task BookmarkSelection_WhenSelectedLogEntryChanges_SyncsToSidebar()
+        {
+            // Arrange
+            _viewModel = CreateViewModel();
+            var entry1 = new LogEntry { Message = "B1", IsBookmarked = true };
+            var entry2 = new LogEntry { Message = "B2", IsBookmarked = true };
+            await SetLogsToViewModel(_viewModel, new List<LogEntry> { entry1, entry2 });
+
+            // Act
+            _viewModel.SelectedLogEntry = entry2;
+
+            // Assert
+            // Dispatcher.BeginInvoke を使用しているため、テスト内では即時反映されるはず（Setupで同期実行にしているため）
+            Assert.AreEqual(entry2, _viewModel.BookmarkedEntries.CurrentItem, "Selection should sync from main to sidebar.");
+        }
+
+        [TestMethod]
+        public async Task ClearBookmarksCommand_CanExecute_OnlyWhenBookmarksExist()
+        {
+            // Arrange
+            _viewModel = CreateViewModel();
+            var entry = new LogEntry { Message = "1", IsBookmarked = false };
+            await SetLogsToViewModel(_viewModel, new List<LogEntry> { entry });
+
+            // Act & Assert 1: ブックマークがない時は実行不可
+            Assert.IsFalse(_viewModel.ClearBookmarksCommand.CanExecute(null), "Command should not be executable when no bookmarks exist.");
+
+            // Act 2: ブックマークを追加
+            entry.IsBookmarked = true;
+
+            // Assert 2: ブックマークがある時は実行可能
+            Assert.IsTrue(_viewModel.ClearBookmarksCommand.CanExecute(null), "Command should be executable when bookmarks exist.");
+        }
+
+        [TestMethod]
+        public async Task BookmarkEditor_IsEnabled_State_Verification()
+        {
+            // Arrange
+            _viewModel = CreateViewModel();
+            var entry = new LogEntry { Message = "1", IsBookmarked = false };
+            await SetLogsToViewModel(_viewModel, new List<LogEntry> { entry });
+
+            // Act 1: 未ブックマーク行を選択
+            _viewModel.SelectedLogEntry = entry;
+
+            // Assert 1: IsBookmarked が false であることを確認（XAMLの IsEnabled 評価元）
+            Assert.IsNotNull(_viewModel.SelectedLogEntry);
+            Assert.IsFalse(_viewModel.SelectedLogEntry.IsBookmarked);
+
+            // Act 2: ブックマークする
+            _viewModel.ToggleBookmarkCommand.Execute(null);
+
+            // Assert 2
+            Assert.IsTrue(_viewModel.SelectedLogEntry.IsBookmarked);
+        }
+
         private async Task SetLogsToViewModel(MainViewModel vm, List<LogEntry> logs)
         {
             var result = new LogDataResult(logs, new List<DisplayColumnConfig>(), new List<FileState>());

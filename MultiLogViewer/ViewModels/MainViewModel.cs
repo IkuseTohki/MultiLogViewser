@@ -63,6 +63,8 @@ namespace MultiLogViewer.ViewModels
             set => SetProperty(ref _isLoading, value);
         }
 
+        private bool _isSyncingSelection = false;
+
         private LogEntry? _selectedLogEntry;
         public LogEntry? SelectedLogEntry
         {
@@ -72,6 +74,30 @@ namespace MultiLogViewer.ViewModels
                 if (SetProperty(ref _selectedLogEntry, value))
                 {
                     UpdateSearchStatus();
+
+                    if (_isSyncingSelection) return;
+
+                    // サイドパネル（BookmarkedEntries）の選択状態を非同期に同期させる。
+                    _dispatcherService.BeginInvoke(() =>
+                    {
+                        if (_isSyncingSelection) return;
+                        _isSyncingSelection = true;
+                        try
+                        {
+                            if (_selectedLogEntry != null && _selectedLogEntry.IsBookmarked)
+                            {
+                                BookmarkedEntries.MoveCurrentTo(_selectedLogEntry);
+                            }
+                            else
+                            {
+                                BookmarkedEntries.MoveCurrentTo(null);
+                            }
+                        }
+                        finally
+                        {
+                            _isSyncingSelection = false;
+                        }
+                    });
                 }
             }
         }
@@ -181,6 +207,26 @@ namespace MultiLogViewer.ViewModels
             BookmarkedEntries.Filter = item => (item is LogEntry entry) && entry.IsBookmarked;
             BookmarkedEntries.SortDescriptions.Add(new System.ComponentModel.SortDescription("Timestamp", System.ComponentModel.ListSortDirection.Ascending));
 
+            // サイドパネルの選択をメイングリッドの選択に同期させる
+            BookmarkedEntries.CurrentChanged += (s, e) =>
+            {
+                if (_isSyncingSelection) return;
+
+                var current = BookmarkedEntries.CurrentItem as LogEntry;
+                if (current != null)
+                {
+                    _isSyncingSelection = true;
+                    try
+                    {
+                        SelectedLogEntry = current;
+                    }
+                    finally
+                    {
+                        _isSyncingSelection = false;
+                    }
+                }
+            };
+
             RefreshCommand = new RelayCommand(async _ =>
             {
                 IsLoading = true;
@@ -200,7 +246,7 @@ namespace MultiLogViewer.ViewModels
             SetBookmarkColorCommand = new RelayCommand(param => SetBookmarkColor(param));
             NextBookmarkCommand = new RelayCommand(_ => NavigateBookmark(true));
             PreviousBookmarkCommand = new RelayCommand(_ => NavigateBookmark(false));
-            ClearBookmarksCommand = new RelayCommand(_ => ClearBookmarks());
+            ClearBookmarksCommand = new RelayCommand(_ => ClearBookmarks(), _ => _logEntries.Any(e => e.IsBookmarked));
             AddBookmarkFilterCommand = new RelayCommand(param => AddBookmarkFilter(param));
             ToggleBookmarkPanelCommand = new RelayCommand(_ => IsBookmarkPanelVisible = !IsBookmarkPanelVisible);
             ToggleDetailPanelCommand = new RelayCommand(_ => IsDetailPanelVisible = !IsDetailPanelVisible);

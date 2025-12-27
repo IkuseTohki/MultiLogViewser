@@ -4,6 +4,7 @@
     <Style TargetType="{x:Type DataGrid}">
         <Setter Property="RowBackground" Value="{StaticResource ControlBackgroundBrush}" />
         <Setter Property="AlternatingRowBackground" Value="{StaticResource PrimaryHueLightBrush}" />
+        <Setter Property="AlternationCount" Value="2" />
         <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="GridLinesVisibility" Value="Horizontal" />
